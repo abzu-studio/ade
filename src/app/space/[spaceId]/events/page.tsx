@@ -3,8 +3,6 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useParams } from "next/navigation";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
@@ -14,24 +12,18 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useSpaceData } from "@/components/ade/space";
-import {
-  CapacityField,
-  Choice,
-  EmptyState,
-  PageHeader,
-  SaveButton,
-  TextField,
-  parseCapacity,
-} from "@/components/ade/widgets";
+import { CapacityField, Choice, SaveButton, TextField, parseCapacity } from "@/components/ade/widgets";
+import type { EventStatus } from "@/core/types";
 import { useI18n } from "@/i18n";
+
+const filters: Array<{ value: "all" | EventStatus; label: "common.all" | `status.${EventStatus}` }> = [
+  { value: "all", label: "common.all" },
+  { value: "draft", label: "status.draft" },
+  { value: "scheduled", label: "status.scheduled" },
+  { value: "completed", label: "status.completed" },
+  { value: "cancelled", label: "status.cancelled" },
+];
 
 export default function EventsPage() {
   const params = useParams<{ spaceId: string }>();
@@ -51,90 +43,87 @@ export default function EventsPage() {
 
   return (
     <>
-      <PageHeader title={t("events.title")} description={t("events.empty")}>
-        <Button type="button" onClick={() => setOpen(true)} disabled={data.components.length === 0}>
+      <div className="flex flex-wrap items-baseline justify-between gap-4">
+        <div>
+          <h1 className="ade-display text-5xl md:text-6xl">{t("events.title")}</h1>
+          <p className="mt-3 max-w-3xl text-sm">{t("events.empty")}</p>
+        </div>
+        <button
+          type="button"
+          className="ade-verb"
+          disabled={data.components.length === 0}
+          onClick={() => setOpen(true)}
+        >
           {t("events.add")}
-        </Button>
-      </PageHeader>
-      {data.components.length === 0 ? <EmptyState>{t("taxonomy.empty")}</EmptyState> : null}
-      <Choice
-        label={t("common.status")}
-        value={status}
-        onChange={setStatus}
-        options={[
-          { value: "all", label: t("common.all") },
-          { value: "draft", label: t("status.draft") },
-          { value: "scheduled", label: t("status.scheduled") },
-          { value: "completed", label: t("status.completed") },
-          { value: "cancelled", label: t("status.cancelled") },
-        ]}
-      />
+        </button>
+      </div>
+      {data.components.length === 0 ? <p className="text-sm">{t("taxonomy.empty")}</p> : null}
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="ade-kicker">{t("common.status")}</span>
+        {filters.map((filter) => (
+          <button
+            key={filter.value}
+            type="button"
+            className="ade-stamp"
+            aria-pressed={status === filter.value}
+            onClick={() => setStatus(filter.value)}
+          >
+            {t(filter.label)}
+          </button>
+        ))}
+      </div>
       {visible.length === 0 ? (
-        <EmptyState>{t("events.empty")}</EmptyState>
+        <p className="text-sm">{t("events.empty")}</p>
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>{t("common.date")}</TableHead>
-              <TableHead>{t("common.name")}</TableHead>
-              <TableHead>{t("common.status")}</TableHead>
-              <TableHead>{t("events.participants")}</TableHead>
-              <TableHead />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {visible.map((event) => (
-              <TableRow key={event.id}>
-                <TableCell>{event.date}</TableCell>
-                <TableCell>{event.title}</TableCell>
-                <TableCell>
-                  <Badge variant={event.status === "cancelled" ? "destructive" : "secondary"}>
-                    {t(`status.${event.status}` as "status.draft")}
-                  </Badge>
-                </TableCell>
-                <TableCell>{event.participantIds.length}</TableCell>
-                <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger render={<Button variant="outline" />}>
-                      {t("common.actions")}
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                      <DropdownMenuItem render={<Link href={`/space/${params.spaceId}/events/${event.id}`} />}>
-                        {t("action.open")}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() =>
-                          data.run({
-                            type: "duplicateEvent",
-                            spaceId: params.spaceId,
-                            eventId: event.id,
-                            titleSuffix: t("common.copySuffix"),
-                          })
-                        }
-                      >
-                        {t("events.duplicate")}
-                      </DropdownMenuItem>
-                      {event.status !== "cancelled" ? (
-                        <DropdownMenuItem
-                          onClick={() =>
-                            data.run({
-                              type: "setEventStatus",
-                              spaceId: params.spaceId,
-                              eventId: event.id,
-                              status: "cancelled",
-                            })
-                          }
-                        >
-                          {t("events.cancel")}
-                        </DropdownMenuItem>
-                      ) : null}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        <div className="border-t border-[#4a2a18]">
+          {visible.map((event) => (
+            <div key={event.id} className="ade-row flex flex-wrap items-baseline gap-x-4 gap-y-2 py-3">
+              <span className="w-28 font-mono text-sm">{event.date}</span>
+              <span className="min-w-40 flex-1">{event.title}</span>
+              <span className="ade-stamp" data-status={event.status}>
+                {t(`status.${event.status}`)}
+              </span>
+              <span className="ade-kicker">
+                {event.participantIds.length} {t("events.participants")}
+              </span>
+              <span className="flex flex-wrap gap-4">
+                <Link href={`/space/${params.spaceId}/events/${event.id}`} className="ade-verb">
+                  {t("action.open")}
+                </Link>
+                <button
+                  type="button"
+                  className="ade-verb"
+                  onClick={() =>
+                    data.run({
+                      type: "duplicateEvent",
+                      spaceId: params.spaceId,
+                      eventId: event.id,
+                      titleSuffix: t("common.copySuffix"),
+                    })
+                  }
+                >
+                  {t("events.duplicate")}
+                </button>
+                {event.status !== "cancelled" ? (
+                  <button
+                    type="button"
+                    className="ade-verb"
+                    onClick={() =>
+                      data.run({
+                        type: "setEventStatus",
+                        spaceId: params.spaceId,
+                        eventId: event.id,
+                        status: "cancelled",
+                      })
+                    }
+                  >
+                    {t("events.cancel")}
+                  </button>
+                ) : null}
+              </span>
+            </div>
+          ))}
+        </div>
       )}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>

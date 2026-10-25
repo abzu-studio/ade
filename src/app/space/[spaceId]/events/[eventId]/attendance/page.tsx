@@ -3,21 +3,13 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
-import { Button, buttonVariants } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { RecordHistory } from "@/components/ade/history-sheet";
 import { useSpaceData } from "@/components/ade/space";
-import { EmptyState, PageHeader } from "@/components/ade/widgets";
 import { computeAttendance, formatPercent } from "@/core/attendance";
 import { ATTENDANCE_STATES } from "@/core/constants";
 import type { AttendanceState, Person } from "@/core/types";
 import { useI18n } from "@/i18n";
 import type { MessageKey } from "@/i18n/en";
-import { cn } from "@/lib/utils";
 
 const shortcut: Record<string, AttendanceState> = {
   p: "present",
@@ -95,7 +87,7 @@ export default function AttendancePage() {
     return () => window.removeEventListener("keydown", onKey);
   }, [canMark, data, event, notes, params.spaceId, participants, safeIndex]);
 
-  if (!event) return <EmptyState>{t("error.NOT_FOUND")}</EmptyState>;
+  if (!event) return <p className="text-sm">{t("error.NOT_FOUND")}</p>;
 
   const breakdown = computeAttendance(data.db, { spaceId: params.spaceId, eventId: event.id });
   const historyPerson = participants.find((person) => person.id === historyFor) ?? null;
@@ -105,143 +97,127 @@ export default function AttendancePage() {
 
   return (
     <>
-      <PageHeader title={event.title} description={t("attendance.formula")}>
-        <Link
-          href={`/space/${params.spaceId}/events/${event.id}`}
-          className={cn(buttonVariants({ variant: "outline" }))}
-        >
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="ade-kicker">{event.date}</p>
+          <h1 className="ade-display mt-2 text-5xl md:text-6xl">{event.title}</h1>
+        </div>
+        <Link href={`/space/${params.spaceId}/events/${event.id}`} className="ade-verb">
           {t("events.details")}
         </Link>
-      </PageHeader>
-      <Alert>
-        <AlertDescription>{t("attendance.help")}</AlertDescription>
-      </Alert>
-      <p className="text-sm text-muted-foreground">{t("attendance.shortcuts")}</p>
+      </div>
+      <p role="alert" className="max-w-3xl text-sm">
+        {t("attendance.help")}
+      </p>
+      <p className="text-sm">{t("attendance.formula")}</p>
+      <p className="text-sm">{t("attendance.shortcuts")}</p>
       {!canMark ? (
-        <Alert>
-          <AlertDescription>{t("attendance.notAllowed")}</AlertDescription>
-        </Alert>
+        <p role="alert" className="text-sm">
+          {t("attendance.notAllowed")}
+        </p>
       ) : null}
       {!event.countsForAttendance ? (
-        <Alert>
-          <AlertDescription>{t("participation.reason.not-counting")}</AlertDescription>
-        </Alert>
+        <p role="alert" className="text-sm">
+          {t("participation.reason.not-counting")}
+        </p>
       ) : null}
-      <Card>
-        <CardHeader>
-          <CardTitle>{t("attendance.running")}</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-1 text-sm">
-          <p>
-            {t("participation.percentage")}: {formatPercent(breakdown.percentage)}
-          </p>
-          <p>
+      <section className="flex flex-wrap items-end justify-between gap-6 border-y border-[#4a2a18] py-4">
+        <div>
+          <p className="ade-kicker">{t("attendance.running")}</p>
+          <p className="ade-display mt-2 text-6xl">{formatPercent(breakdown.percentage)}</p>
+          <p className="mt-2 font-mono text-sm">
             {breakdown.formula} = {breakdown.present} / {breakdown.denominator}
           </p>
-          <p>
-            {t("attendance.present")} {breakdown.present} · {t("attendance.absent")} {breakdown.absent} ·{" "}
-            {t("attendance.excused")} {breakdown.excused} · {t("attendance.pending")} {breakdown.pending} ·{" "}
-            {t("attendance.unrecorded")} {breakdown.unrecorded}
-          </p>
-        </CardContent>
-      </Card>
+        </div>
+        <p className="max-w-md text-sm">
+          {t("attendance.present")} {breakdown.present} · {t("attendance.absent")} {breakdown.absent} ·{" "}
+          {t("attendance.excused")} {breakdown.excused} · {t("attendance.pending")} {breakdown.pending} ·{" "}
+          {t("attendance.unrecorded")} {breakdown.unrecorded}
+        </p>
+      </section>
       {participants.length === 0 ? (
-        <EmptyState>{t("attendance.empty")}</EmptyState>
+        <p className="text-sm">{t("attendance.empty")}</p>
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>{t("common.person")}</TableHead>
-              <TableHead>{t("common.status")}</TableHead>
-              <TableHead>{t("attendance.title")}</TableHead>
-              <TableHead>{t("attendance.note")}</TableHead>
-              <TableHead />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {participants.map((person, personIndex) => {
-              const record = data.attendance.find(
-                (item) => item.eventId === event.id && item.personId === person.id,
-              );
-              return (
-                <TableRow key={person.id} data-state={personIndex === safeIndex ? "selected" : undefined}>
-                  <TableCell>
-                    <button type="button" className="text-left" onClick={() => setIndex(personIndex)}>
-                      {person.name}
-                    </button>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="secondary">
-                      {record ? t(`attendance.${record.state}` as MessageKey) : t("attendance.unrecorded")}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap gap-1">
-                      {ATTENDANCE_STATES.map((state) => (
-                        <Button
-                          key={state}
-                          type="button"
-                          size="sm"
-                          variant={record?.state === state ? "secondary" : "outline"}
-                          disabled={!canMark}
-                          onClick={() => {
-                            setIndex(personIndex);
-                            data.run({
-                              type: "setAttendance",
-                              spaceId: params.spaceId,
-                              eventId: event.id,
-                              personId: person.id,
-                              state,
-                              note: notes[person.id] ?? "",
-                            });
-                          }}
-                        >
-                          {t(`attendance.${state}` as MessageKey)}
-                        </Button>
-                      ))}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
-                      <Input
+        <div className="border-t border-[#4a2a18]">
+          {participants.map((person, personIndex) => {
+            const record = data.attendance.find(
+              (item) => item.eventId === event.id && item.personId === person.id,
+            );
+            return (
+              <div
+                key={person.id}
+                className="ade-row flex flex-col gap-3 py-3 md:flex-row md:items-start"
+                data-state={personIndex === safeIndex ? "selected" : undefined}
+              >
+                <button type="button" className="w-48 shrink-0 text-left" onClick={() => setIndex(personIndex)}>
+                  {person.name}
+                </button>
+                <div className="flex min-w-0 flex-1 flex-col gap-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    {record ? null : <span className="ade-kicker">{t("attendance.unrecorded")}</span>}
+                    {ATTENDANCE_STATES.map((state) => (
+                      <button
+                        key={state}
+                        type="button"
+                        className="ade-stamp"
+                        aria-pressed={record?.state === state}
+                        disabled={!canMark}
+                        onClick={() => {
+                          setIndex(personIndex);
+                          data.run({
+                            type: "setAttendance",
+                            spaceId: params.spaceId,
+                            eventId: event.id,
+                            personId: person.id,
+                            state,
+                            note: notes[person.id] ?? "",
+                          });
+                        }}
+                      >
+                        {t(`attendance.${state}` as MessageKey)}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex flex-wrap items-end gap-4">
+                    <label className="flex min-w-48 flex-1 flex-col gap-1">
+                      <span className="ade-kicker">{t("attendance.note")}</span>
+                      <input
+                        className="ade-line"
                         value={notes[person.id] ?? ""}
                         onChange={(input) =>
                           setNotes((current) => ({ ...current, [person.id]: input.target.value }))
                         }
-                        aria-label={t("attendance.note")}
                       />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        disabled={!canMark || !record}
-                        onClick={() =>
-                          data.run(
-                            {
-                              type: "setAttendance",
-                              spaceId: params.spaceId,
-                              eventId: event.id,
-                              personId: person.id,
-                              state: record!.state,
-                              note: notes[person.id] ?? "",
-                            },
-                            t("common.saved"),
-                          )
-                        }
-                      >
-                        {t("attendance.saveNote")}
-                      </Button>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Button type="button" variant="ghost" onClick={() => setHistoryFor(person.id)}>
+                    </label>
+                    <button
+                      type="button"
+                      className="ade-verb"
+                      disabled={!canMark || !record}
+                      onClick={() =>
+                        data.run(
+                          {
+                            type: "setAttendance",
+                            spaceId: params.spaceId,
+                            eventId: event.id,
+                            personId: person.id,
+                            state: record!.state,
+                            note: notes[person.id] ?? "",
+                          },
+                          t("common.saved"),
+                        )
+                      }
+                    >
+                      {t("attendance.saveNote")}
+                    </button>
+                    <button type="button" className="ade-verb" onClick={() => setHistoryFor(person.id)}>
                       {t("attendance.history")}
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       )}
       <RecordHistory
         open={historyFor !== null}
