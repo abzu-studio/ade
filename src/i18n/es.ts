@@ -59,6 +59,7 @@ export const es: Record<MessageKey, string> = {
   "spaces.demo": "Cargar espacio de ejemplo",
   "spaces.demoHelp": "Añade un espacio de muestra con personas, un período, eventos, asistencia y voluntarios.",
   "overview.cycle": "Ciclo de actividad",
+  "overview.next": "Siguiente",
   "overview.stepPeople": "Añadir personas",
   "overview.stepTaxonomy": "Añadir un componente y una categoría",
   "overview.stepEvent": "Crear un evento y su lista de participantes",

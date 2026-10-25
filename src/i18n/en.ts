@@ -57,6 +57,7 @@ export const en = {
   "spaces.demo": "Load demo space",
   "spaces.demoHelp": "Adds a sample space with people, a period, events, attendance, and volunteers.",
   "overview.cycle": "Activity cycle",
+  "overview.next": "Next",
   "overview.stepPeople": "Add people",
   "overview.stepTaxonomy": "Add a component and a category",
   "overview.stepEvent": "Create an event and its participant list",
