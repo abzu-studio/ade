@@ -1,0 +1,46 @@
+name: Promote Adê 0.4.1
+on:
+  push:
+    branches: [codex/promote-041-release]
+    paths: [.github/workflows/promote-xcode-release.yml]
+permissions:
+  contents: write
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify exact release and promote without changing its files
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/releases/tags/v0.4.1" > /tmp/release-before.json
+          python3 - <<'PY'
+          import json
+          r = json.load(open('/tmp/release-before.json'))
+          assert r['target_commitish'] == '70cfa3ab803c4b558812c418150f3561d6be439e'
+          assert not r['draft']
+          expected = {
+            'Ade-0.4.1-15-unsigned.dmg': 'sha256:1606844ce9e99ea72f328033016f189fa9bc31035ce6f6cc56a517fe2ac77d9c',
+            'Ade-0.4.1-source.zip': 'sha256:aab6d3f0de245819c211e764662deeb9396b8a427eb7f178133897d3bad8f32a',
+            'BUILD.txt': 'sha256:78a902db141cb7c08a5232c7db766a379ce5026407146965d40b60b7fb16d652',
+            'SHA256SUMS.txt': 'sha256:b3589d4eb397d9fbdf4a20f129205da302b7f0e997fe709980c8ad857cd0602a',
+          }
+          assert {a['name']: a['digest'] for a in r['assets']} == expected
+          PY
+          gh release edit v0.4.1 --repo "$GITHUB_REPOSITORY" --prerelease=false --latest
+          gh api "repos/$GITHUB_REPOSITORY/releases/tags/v0.4.1" > /tmp/release-after.json
+          python3 - <<'PY'
+          import json
+          before = json.load(open('/tmp/release-before.json'))
+          after = json.load(open('/tmp/release-after.json'))
+          assert not after['draft'] and not after['prerelease']
+          for field in ('id', 'tag_name', 'target_commitish', 'body'):
+            assert before[field] == after[field], field
+          identity = lambda r: sorted((a['id'], a['name'], a['size'], a['digest']) for a in r['assets'])
+          assert identity(before) == identity(after)
+          print('Release promoted; tag, source, downloads and notarization notice unchanged.')
+          PY
+          test "$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq .tag_name)" = v0.4.1
