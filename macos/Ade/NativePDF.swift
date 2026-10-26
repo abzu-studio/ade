@@ -64,7 +64,7 @@ enum NativePDF {
     let filter =
       o.periodId.isEmpty ? ReportFilter(eventId: event.id) : ReportFilter(periodId: o.periodId)
     let result = try person.map { try Rules.participation(space, person: $0.id, filter: filter) }
-    let values = [
+    let values: [String: String] = [
       "space.name": space.name, "space.timeZone": space.timeZone, "event.name": event.name,
       "event.date": event.date, "event.time": event.time, "event.status": event.status.rawValue,
       "event.component": space.components.first { $0.id == event.componentId }?.name ?? "",
