@@ -48,14 +48,17 @@ jobs:
             -destination 'platform=macOS' \
             CODE_SIGN_IDENTITY=- ONLY_ACTIVE_ARCH=YES build
           app=build/CaptureDerived/Build/Products/Debug/Ade.app
-          out="${RUNNER_TEMP}/no-border.png"
-          rm -f "$out"
-          ADE_UI_TEST_RUN=noborder ADE_CAPTURE_WINDOW="$out" "$app/Contents/MacOS/Ade"
-          test -s "$out"
+          log="${RUNNER_TEMP}/ade-capture.log"
+          ADE_UI_TEST_RUN=noborder ADE_CAPTURE_WINDOW="${RUNNER_TEMP}/no-border.png" \
+            "$app/Contents/MacOS/Ade" > "$log" 2>&1
+          src=$(sed -n 's/^ADE_CAPTURE_WROTE=//p' "$log" | tail -1)
+          test -n "$src"
+          cp "$src" no-border.png
+          test -s no-border.png
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: ade-no-border
-          path: ${{ runner.temp }}/no-border.png
+          path: no-border.png
           if-no-files-found: warn
           retention-days: 5

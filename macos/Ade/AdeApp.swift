@@ -356,12 +356,21 @@ private func captureWorkspaceWindow(model: AppModel, to path: String) async {
     fputs("capture: empty png\n", stderr)
     exit(1)
   }
+  let preferred = URL(fileURLWithPath: path)
+  let written: URL
   do {
-    try png.write(to: URL(fileURLWithPath: path))
+    try png.write(to: preferred)
+    written = preferred
   } catch {
-    fputs("capture: \(error)\n", stderr)
-    exit(1)
+    let fallback = FileManager.default.temporaryDirectory.appendingPathComponent("no-border.png")
+    do { try png.write(to: fallback) } catch {
+      fputs("capture: \(error)\n", stderr)
+      exit(1)
+    }
+    written = fallback
   }
+  fputs("ADE_CAPTURE_WROTE=\(written.path)\n", stdout)
+  fflush(stdout)
   exit(0)
 }
 #endif
