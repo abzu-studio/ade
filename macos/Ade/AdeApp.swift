@@ -196,7 +196,7 @@ struct WorkspaceView: View {
                 .foregroundStyle(model.section == section ? Enki.onDark : Enki.ink)
                 .background {
                   if model.section == section {
-                    RoundedRectangle(cornerRadius: 2).fill(Enki.selection)
+                    PaperAccentSurface(tint: Enki.selection, cornerRadius: 2)
                       .matchedGeometryEffect(id: "navigation", in: navigationInk)
                   }
                 }

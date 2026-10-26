@@ -1,36 +1,17 @@
 name: Xcode DMG release
 on:
   push:
-    branches: [codex/release-041-clean]
-    paths:
-      - 'macos/**'
-      - 'native-tests/**'
-      - 'scripts/package-mac.py'
-      - 'scripts/audit-source.py'
-      - 'scripts/verify-toolchain.sh'
-      - '.github/workflows/xcode-release.yml'
-      - 'docs/RELEASE-0.4.1.md'
+    branches: [main]
+    paths: ['macos/project.yml']
+  workflow_dispatch:
 permissions:
   contents: read
 concurrency:
-  group: xcode-dmg-041
-  cancel-in-progress: true
+  group: xcode-dmg-release
+  cancel-in-progress: false
 jobs:
-  withdraw-previous-preview:
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    permissions:
-      contents: write
-    steps:
-      - name: Withdraw only the preview built with the previous compiler
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          previous="$(gh release view v0.4.1 --repo "$GITHUB_REPOSITORY" --json targetCommitish,isPrerelease --jq 'if .isPrerelease then .targetCommitish else "unexpected-stable-release" end')"
-          test "$previous" = '1779cc136b0f7e0e925f2ddef07a19740ef31203'
-          gh release edit v0.4.1 --repo "$GITHUB_REPOSITORY" --draft
   package:
+    if: github.ref == 'refs/heads/main'
     runs-on: xcode-27
     timeout-minutes: 30
     env:
@@ -49,31 +30,32 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          git archive --format=zip --prefix=Ade-0.4.1/ -o dist/preview/Ade-0.4.1-source.zip "$GITHUB_SHA" \
-            macos native-tests scripts/test-native.sh scripts/package-mac.py scripts/audit-source.py \
+          test -s dist/preview/Ade-0.4.5-19-unsigned.dmg
+          git archive --format=zip --prefix=Ade-0.4.5/ -o dist/preview/Ade-0.4.5-source.zip "$GITHUB_SHA" \
+            macos native-tests scripts/test-native.sh scripts/test-ui.sh scripts/package-mac.py scripts/audit-source.py \
             scripts/generate-opening-sound.py scripts/verify-toolchain.sh docs/BUILD-XCODE.md docs/ARCHITECTURE-XCODE.md \
-            docs/RULES-XCODE.md docs/DISTRIBUTION.md docs/RELEASE-0.4.1.md \
+            docs/RULES-XCODE.md docs/DISTRIBUTION.md docs/RELEASE-0.4.5.md \
             LICENSE PRIVACY.md THIRD_PARTY_NOTICES.md .gitignore
-          printf 'Adê 0.4.1 (15)\nCommit: %s\nBuild: https://github.com/%s/actions/runs/%s\nSigning: ad hoc, not Apple notarized\n' \
+          printf 'Adê 0.4.5 (19)\nCommit: %s\nBuild: https://github.com/%s/actions/runs/%s\nSigning: ad hoc, not Apple notarized\n' \
             "$GITHUB_SHA" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" > dist/preview/BUILD.txt
           xcodebuild -version >> dist/preview/BUILD.txt
           xcrun swift --version >> dist/preview/BUILD.txt
-          cp docs/RELEASE-0.4.1.md dist/preview/RELEASE.md
+          cp docs/RELEASE-0.4.5.md dist/preview/RELEASE.md
           cd dist/preview
-          shasum -a 256 Ade-0.4.1-15-unsigned.dmg Ade-0.4.1-source.zip > SHA256SUMS.txt
+          shasum -a 256 Ade-0.4.5-19-unsigned.dmg Ade-0.4.5-source.zip > SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: xcode-release-041
+          name: xcode-release-045
           path: |
-            dist/preview/Ade-0.4.1-15-unsigned.dmg
-            dist/preview/Ade-0.4.1-source.zip
+            dist/preview/Ade-0.4.5-19-unsigned.dmg
+            dist/preview/Ade-0.4.5-source.zip
             dist/preview/SHA256SUMS.txt
             dist/preview/BUILD.txt
             dist/preview/RELEASE.md
           if-no-files-found: error
           retention-days: 7
   publish:
-    needs: [package, withdraw-previous-preview]
+    needs: package
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -81,9 +63,9 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: xcode-release-041
+          name: xcode-release-045
           path: release
-      - name: Verify files and publish the pinned-toolchain prerelease
+      - name: Verify downloads and publish Adê 0.4.5
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
@@ -91,11 +73,22 @@ jobs:
           set -euo pipefail
           cd release
           sha256sum --check SHA256SUMS.txt
-          # Replace only this withdrawn preview, after the new package passes every check.
-          previous="$(gh release view v0.4.1 --repo "$GITHUB_REPOSITORY" --json targetCommitish,isDraft,isPrerelease --jq 'if .isDraft and .isPrerelease then .targetCommitish else "unexpected-release" end')"
-          test "$previous" = '1779cc136b0f7e0e925f2ddef07a19740ef31203'
-          gh release delete v0.4.1 --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag
-          gh release create v0.4.1 --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
-            --prerelease --latest=false --title 'Adê 0.4.1 — macOS · SwiftUI/Xcode' \
-            --notes-file RELEASE.md \
-            Ade-0.4.1-15-unsigned.dmg Ade-0.4.1-source.zip SHA256SUMS.txt BUILD.txt
+          # Never overwrite an existing release or move its tag.
+          gh release create v0.4.5 --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            --draft --title 'Adê 0.4.5 — macOS · SwiftUI/Xcode' --notes-file RELEASE.md \
+            Ade-0.4.5-19-unsigned.dmg Ade-0.4.5-source.zip SHA256SUMS.txt BUILD.txt
+          gh api "repos/$GITHUB_REPOSITORY/releases/tags/v0.4.5" > release.json
+          python3 - <<'PY'
+          import hashlib, json, os, pathlib
+          r = json.load(open('release.json'))
+          assert r['draft'] and r['target_commitish'] == os.environ['GITHUB_SHA']
+          assets = {a['name']: a for a in r['assets']}
+          expected = {'Ade-0.4.5-19-unsigned.dmg', 'Ade-0.4.5-source.zip', 'SHA256SUMS.txt', 'BUILD.txt'}
+          assert set(assets) == expected
+          for name in expected:
+              payload = pathlib.Path(name).read_bytes()
+              assert assets[name]['size'] == len(payload)
+              assert assets[name]['digest'] == 'sha256:' + hashlib.sha256(payload).hexdigest()
+          PY
+          gh release edit v0.4.5 --repo "$GITHUB_REPOSITORY" --draft=false --prerelease=false --latest
+          test "$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq .tag_name)" = v0.4.5

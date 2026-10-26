@@ -1,4 +1,5 @@
 import XCTest
+import AppKit
 
 final class ExperienceTests: XCTestCase {
   @MainActor private func launch(welcome: Bool = false) -> XCUIApplication {
@@ -34,13 +35,45 @@ final class ExperienceTests: XCTestCase {
     XCTAssertTrue(element.waitForExistence(timeout: 5), app.debugDescription)
     return (element.value as? String) ?? element.label
   }
-  @MainActor private func capture(_ app: XCUIApplication, _ name: String) {
+  @discardableResult
+  @MainActor private func capture(_ app: XCUIApplication, _ name: String) -> XCUIScreenshot {
     // Wait for the intentional 650 ms art dissolve, not for the continuous Canvas to become idle.
     RunLoop.current.run(until: Date().addingTimeInterval(0.85))
-    let image = XCTAttachment(screenshot: app.windows.firstMatch.screenshot())
+    let screenshot = app.windows.firstMatch.screenshot()
+    let image = XCTAttachment(screenshot: screenshot)
     image.name = name
     image.lifetime = .keepAlways
     add(image)
+    return screenshot
+  }
+
+  @MainActor private func assertTide(_ first: XCUIScreenshot, _ second: XCUIScreenshot, moving: Bool,
+                                      region: CGRect = CGRect(x: 0.35, y: 0.66, width: 0.55, height: 0.24)) {
+    guard let a = NSBitmapImageRep(data: first.pngRepresentation),
+          let b = NSBitmapImageRep(data: second.pngRepresentation) else {
+      XCTFail("Unable to read rendered frames"); return
+    }
+    XCTAssertEqual(a.pixelsWide, b.pixelsWide)
+    XCTAssertEqual(a.pixelsHigh, b.pixelsHigh)
+    var difference = 0.0
+    var samples = 0
+    // Sample the central background: live reflections must not be confined to the margins.
+    for y in stride(from: Int(Double(a.pixelsHigh) * region.minY), to: Int(Double(a.pixelsHigh) * region.maxY), by: 4) {
+      for x in stride(from: Int(Double(a.pixelsWide) * region.minX), to: Int(Double(a.pixelsWide) * region.maxX), by: 4) {
+        guard let c = a.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB),
+              let d = b.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB) else { continue }
+        difference += abs(c.redComponent - d.redComponent) + abs(c.greenComponent - d.greenComponent)
+          + abs(c.blueComponent - d.blueComponent)
+        samples += 3
+      }
+    }
+    XCTAssertGreaterThan(samples, 0)
+    let average = difference / Double(max(1, samples))
+    if moving {
+      XCTAssertGreaterThan(average, 0.0005, "The live layer must visibly evolve between frames (delta: \(average))")
+    } else {
+      XCTAssertLessThan(average, 0.0002, "Motion disabled must render a stable field (delta: \(average))")
+    }
   }
 
   @MainActor func testDocumentPreviewInvalidatesAfterUndo() {
@@ -257,13 +290,21 @@ final class ExperienceTests: XCTestCase {
       app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "open-space-")).firstMatch.click()
       app.activate()
       capture(app, "Tide " + theme + " summary")
+      let preferences = app.buttons.matching(NSPredicate(format: "label ==[c] %@", "Preferencias")).firstMatch
+      XCTAssertLessThan(app.windows.firstMatch.frame.maxY - preferences.frame.maxY, 80,
+                        "Sidebar must reach the bottom without a reserved decorative footer")
       click(app, "nav-events")
       let row = app.buttons["event-row-event-0"]
       XCTAssertTrue(row.waitForExistence(timeout: 5))
       let before = row.frame
-      capture(app, "Tide " + theme + " events A")
+      let first = capture(app, "Tide " + theme + " events A")
+      let accentBefore = app.buttons["event-new"].screenshot()
       RunLoop.current.run(until: Date().addingTimeInterval(2))
-      capture(app, "Tide " + theme + " events B")
+      let second = capture(app, "Tide " + theme + " events B")
+      assertTide(first, second, moving: true)
+      assertTide(first, second, moving: true, region: CGRect(x: 0.025, y: 0.15, width: 0.12, height: 0.62))
+      assertTide(accentBefore, app.buttons["event-new"].screenshot(), moving: true,
+                 region: CGRect(x: 0.05, y: 0.05, width: 0.9, height: 0.9))
       XCTAssertEqual(row.frame, before, "Ambient animation must never move a control")
       click(app, "event-row-event-0")
       capture(app, "Tide " + theme + " attendance")
@@ -301,9 +342,14 @@ final class ExperienceTests: XCTestCase {
     motion.click()
     app.activate()
     click(app, "nav-events")
-    capture(app, "Tide static A")
+    let first = capture(app, "Tide static A")
+    let accentBefore = app.buttons["event-new"].screenshot()
     RunLoop.current.run(until: Date().addingTimeInterval(2))
-    capture(app, "Tide static B")
+    let second = capture(app, "Tide static B")
+    assertTide(first, second, moving: false)
+    assertTide(first, second, moving: false, region: CGRect(x: 0.025, y: 0.15, width: 0.12, height: 0.62))
+    assertTide(accentBefore, app.buttons["event-new"].screenshot(), moving: false,
+               region: CGRect(x: 0.05, y: 0.05, width: 0.9, height: 0.9))
   }
 
   @MainActor func testSectionAtmospheres() {

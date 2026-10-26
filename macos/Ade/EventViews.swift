@@ -37,6 +37,7 @@ struct EventsView: View {
           PaperRule(strong: true)
           ScrollView {
             LazyVStack(spacing: 0) { ForEach(events) { eventRow($0) } }
+
             if events.isEmpty {
               VStack(alignment: .leading, spacing: 12) {
                 Text(m.t("SIN EVENTOS", "NO EVENTS")).font(.custom(Enki.display, size: 24))
@@ -560,6 +561,7 @@ struct AttendanceView: View {
                   }
                   PaperRule()
                 }.background(selectedPerson == id ? Enki.accent.opacity(0.065) : .clear)
+
                   .overlay(alignment: .leading) {
                     if selectedPerson == id { Rectangle().fill(Enki.accent).frame(width: 2) }
                   }.id(id)
@@ -685,7 +687,7 @@ struct AttendanceRail: View {
         Text("\(result.present) / (\(result.present) + \(result.absent))")
           .font(.custom(Enki.mono, size: 10)).foregroundStyle(Enki.onDark.opacity(0.8))
       }.padding(.vertical, 22).frame(maxWidth: .infinity)
-        .background(Enki.deep, in: RoundedRectangle(cornerRadius: 2)).padding(.top, 22).padding(
+        .background { PaperAccentSurface(tint: Enki.deep, cornerRadius: 2) }.padding(.top, 22).padding(
           .bottom, 18)
       ForEach(AttendanceStatus.allCases, id: \.rawValue) { state in
         HStack {

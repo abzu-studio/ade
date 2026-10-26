@@ -264,7 +264,7 @@ struct DayPrimaryButton: ButtonStyle {
   func makeBody(configuration: Configuration) -> some View {
     configuration.label.font(.custom(Enki.mono, size: 10)).textCase(.uppercase).tracking(0.8)
       .padding(.horizontal, 14).padding(.vertical, 10).foregroundStyle(Enki.onAccent)
-      .background(Enki.accent, in: RoundedRectangle(cornerRadius: 3))
+      .background { PaperAccentSurface(tint: Enki.accent) }
       .opacity(!enabled ? 0.4 : configuration.isPressed ? 0.7 : 1)
   }
 }
