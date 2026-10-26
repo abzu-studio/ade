@@ -4,13 +4,19 @@ Adê is a native Mac app for one operator. A space holds people, groups, periods
 
 The app is local-first. There are no accounts. Collaboration is a JSON file: export a backup or one space, and import it on another Mac. When both sides changed the same record, Adê keeps both versions until you choose.
 
+## Download — SwiftUI/Xcode edition
+
+[Adê 0.4.1 for macOS](https://github.com/abzu-studio/ade/releases/tag/v0.4.1) is the DMG edition from `macos/`, with universal Apple Silicon and Intel binaries. The release includes the corresponding source archive and SHA-256 checksums. It starts empty, without demonstration records.
+
+This preview is ad-hoc signed and **not notarized by Apple**. macOS may block its first launch; see the release installation notes. Existing Xcode 0.4.0 data stays in the same local container.
+
 ## Requirements
 
 macOS 14 or later.
 
 ## Build
 
-This branch contains two native targets. The Swift Package commands below build 1.0.1 from `Sources/`. The preserved Xcode 0.3.2 app lives in `macos/Ade.xcodeproj`; its checks use `scripts/test-native.sh` and its packaging is documented in [Distribution](docs/DISTRIBUTION.md). They have separate bundle identifiers and storage formats; there is no automatic data migration between them.
+This branch contains two native targets. The Swift Package commands below build 1.0.1 from `Sources/`. The Xcode 0.4.1 app lives in `macos/Ade.xcodeproj`; its checks use `scripts/test-native.sh` and its packaging is documented in [Distribution](docs/DISTRIBUTION.md). They have separate bundle identifiers and storage formats; there is no automatic data migration between them.
 
 ```bash
 swift test
@@ -20,9 +26,9 @@ open "dist/Adê.app"
 
 `swift test` runs the rule suite in `Tests/AdeCoreTests`. The package script builds a release `.app`, generates the dock icon, and writes `dist/Ade-1.0.1-macOS.zip`.
 
-## Using it
+## Using the Swift Package edition
 
-Open Adê from the Dock. Create a space, or load the demo space. Everything else belongs to the open space: Overview, People, Groups, Periods, Components, Events, Participation, Documents, History, Conflicts, Data, and Rules.
+Open Adê from the Dock. Create a space. Everything else belongs to the open space: Overview, People, Groups, Periods, Components, Events, Participation, Documents, History, Conflicts, Data, and Rules.
 
 Attendance and volunteers stay on the event. Participation reads the same counts across a period. Undo is ⌘Z. On an event that is scheduled or completed, P, A, E, and W mark present, absent, excused, and pending when a text field is not focused.
 

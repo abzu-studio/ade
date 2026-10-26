@@ -2,17 +2,51 @@ import AppKit
 import Observation
 import UniformTypeIdentifiers
 
+/// UI state only. Domain transactions, codecs and disk I/O run on LocalStore's executor.
 @MainActor @Observable final class AppModel {
   var database = Database()
   var selectedSpace = ""
   var section: AppSection = .summary
   var showSpaces = true
   var welcomeRequested = false
+  var quickOpenRequested = false
   var selectedEvent: String?
   var eventTab = 0
   var documentEvent = ""
   var undoSteps: [String: [SessionStep]] = [:]
   var redoSteps: [String: [SessionStep]] = [:]
+  var loading = true
+  var unreadable = false
+  var busy = false
+  var error: String?
+  var notice = ""
+  var pending: Database?
+  var locale: String { didSet { preferences.set(locale, forKey: "ade-locale") } }
+  var author: String { didSet { preferences.set(author, forKey: "ade-author") } }
+  @ObservationIgnored private let preferences: UserDefaults
+  @ObservationIgnored private var token = "empty"
+  private enum HistoryEffect {
+    case none, reset
+    case edit(space: String, before: String, label: String)
+    case travel(space: String, step: SessionStep, backward: Bool)
+    case restore(space: String)
+  }
+  @ObservationIgnored private var pendingHistory: HistoryEffect = .reset
+  let store: LocalStore
+  init(directory: URL? = nil, preferences: UserDefaults? = nil) {
+    self.store = LocalStore(directory: directory)
+    let defaults = preferences ?? (directory.map {
+      UserDefaults(suiteName: "AdeIsolated-" + $0.lastPathComponent)!
+    } ?? .standard)
+    self.preferences = defaults
+    locale = defaults.string(forKey: "ade-locale") ?? "es"
+    author = defaults.string(forKey: "ade-author") ?? "Local"
+  }
+  var branch: Branch? { database.spaces.first { $0.id == selectedSpace } }
+  var space: Space? { branch?.visible?.data }
+  var canEdit: Bool {
+    !loading && !unreadable && !busy && pending == nil && branch?.conflicted == false
+  }
   var canUndo: Bool { canEdit && !(undoSteps[selectedSpace] ?? []).isEmpty }
   var canRedo: Bool { canEdit && !(redoSteps[selectedSpace] ?? []).isEmpty }
   func openSpace(_ id: String) {
@@ -32,53 +66,6 @@ import UniformTypeIdentifiers
     if target == .events { selectedEvent = nil }
     showSpaces = false
   }
-  func undo() async { await travel(backward: true) }
-  func redo() async { await travel(backward: false) }
-  private func travel(backward: Bool) async {
-    guard backward ? canUndo : canRedo else { return }
-    let spaceID = selectedSpace
-    guard let step = (backward ? undoSteps[spaceID] : redoSteps[spaceID])?.last,
-      let b = branch,
-      let target = b.revisions.first(where: { $0.id == (backward ? step.before : step.after) })
-    else { return }
-    do {
-      let result = try Rules.append(
-        database, space: spaceID, data: target.data,
-        label: (backward ? "Deshacer: " : "Rehacer: ") + String(step.label.prefix(225)),
-        author: author)
-      if await commit(result),
-        database.spaces.first(where: { $0.id == spaceID })?.conflicted == false
-      {
-        if backward {
-          undoSteps[spaceID]?.removeLast()
-          redoSteps[spaceID, default: []].append(step)
-        } else {
-          redoSteps[spaceID]?.removeLast()
-          undoSteps[spaceID, default: []].append(step)
-        }
-      }
-    } catch { self.error = error.localizedDescription }
-  }
-  var loading = true
-  var unreadable = false
-  var busy = false
-  var error: String?
-  var notice = ""
-  var pending: Database?
-  var locale = UserDefaults.standard.string(forKey: "ade-locale") ?? "es" {
-    didSet { UserDefaults.standard.set(locale, forKey: "ade-locale") }
-  }
-  var author = UserDefaults.standard.string(forKey: "ade-author") ?? "Local" {
-    didSet { UserDefaults.standard.set(author, forKey: "ade-author") }
-  }
-  private var token = "empty"
-  let store: LocalStore
-  init(directory: URL? = nil) { store = LocalStore(directory: directory) }
-  var branch: Branch? { database.spaces.first { $0.id == selectedSpace } }
-  var space: Space? { branch?.visible?.data }
-  var canEdit: Bool {
-    !loading && !unreadable && !busy && pending == nil && branch?.conflicted == false
-  }
   func t(_ es: String, _ en: String) -> String { locale == "es" ? es : en }
   func status(_ value: String) -> String {
     let labels = [
@@ -94,111 +81,146 @@ import UniformTypeIdentifiers
   }
   func load() async {
     guard !busy && pending == nil else { return }
+    busy = true
     loading = true
-    defer { loading = false }
+    defer { loading = false; busy = false }
     do {
-      let (data, version) = try await store.readData()
-      token = version
-      let db = try data.map { try WorkspaceCodec.decode($0) } ?? Database()
-      database = db
+      let snapshot = try await store.snapshot()
+      token = snapshot.token
+      database = try snapshot.database.get()
       undoSteps = [:]
       redoSteps = [:]
-      token = version
       unreadable = false
-      if !db.spaces.contains(where: { $0.id == selectedSpace }) {
-        selectedSpace = db.spaces.first?.id ?? ""
-      }
+      reconcileSelection()
     } catch {
       unreadable = true
       self.error = error.localizedDescription
     }
   }
+  private func reconcileSelection() {
+    if !database.spaces.contains(where: { $0.id == selectedSpace }) {
+      selectedSpace = database.spaces.first?.id ?? ""
+    }
+  }
+  /// The gate is acquired before the first suspension, including domain preparation.
+  /// Failed writes retain the entire proposal; the visible database is never optimistic.
   func commit(_ proposal: Database) async -> Bool {
     guard !busy && !unreadable else { return false }
+    if let pending, pending != proposal { return false }
+    if pending == nil { pendingHistory = .reset }
     busy = true
-    pending = proposal
     defer { busy = false }
+    return await persist(proposal)
+  }
+  private func persist(_ proposal: Database) async -> Bool {
+    pending = proposal
     do {
-      var result = proposal
-      do {
-        token = try await store.save(
-          String(decoding: WorkspaceCodec.encode(result), as: UTF8.self), expected: token)
-      } catch StoreError.conflict {
-        let (text, newToken) = try await store.load()
-        let latest = try text.map { try WorkspaceCodec.decode(Data($0.utf8)) } ?? Database()
-        result = try Rules.merge(latest, proposal)
-        undoSteps = [:]
-        redoSteps = [:]
-        pending = result
-        token = try await store.save(
-          String(decoding: WorkspaceCodec.encode(result), as: UTF8.self), expected: newToken)
-        notice = t(
-          "Cambios simultáneos conservados. Revisa Historial si hay conflicto.",
-          "Concurrent changes preserved. Check History for conflicts.")
-      }
-      database = result
+      let receipt = try await store.commit(proposal, expected: token)
+      token = receipt.token
+      database = receipt.database
       pending = nil
-      if !result.spaces.contains(where: { $0.id == selectedSpace }) {
-        selectedSpace = result.spaces.first?.id ?? ""
+      finishHistory(merged: receipt.merged)
+      if receipt.merged {
+        notice = t("Cambios simultáneos conservados. Revisa Conflictos.",
+                   "Concurrent changes preserved. Check Conflicts.")
       }
+      reconcileSelection()
       return true
     } catch {
       self.error = error.localizedDescription
       return false
     }
   }
-  func edit(_ command: Edit, label: String) async -> Bool {
-    guard canEdit else { return false }
-    do {
-      let spaceID = selectedSpace
-      let before = branch!.heads[0]
-      let result = try Rules.execute(
-        database, space: spaceID, edit: command, label: label, author: author)
-      let after = result.spaces.first { $0.id == spaceID }!.heads[0]
-      let saved = await commit(result)
-      if saved && database.spaces.first(where: { $0.id == spaceID })?.heads == [after] {
-        undoSteps[spaceID, default: []].append(
-          SessionStep(before: before, after: after, label: label))
-        redoSteps[spaceID] = []
+  private func finishHistory(merged: Bool) {
+    defer { pendingHistory = .reset }
+    if merged {
+      undoSteps = [:]
+      redoSteps = [:]
+      return
+    }
+    switch pendingHistory {
+    case .none: break
+    case .reset:
+      undoSteps = [:]
+      redoSteps = [:]
+    case .edit(let id, let before, let label):
+      guard let branch = database.spaces.first(where: { $0.id == id }),
+        !branch.conflicted, let after = branch.heads.first else { return }
+      undoSteps[id, default: []].append(SessionStep(before: before, after: after, label: label))
+      redoSteps[id] = []
+    case .travel(let id, let step, let backward):
+      if backward {
+        _ = undoSteps[id]?.popLast()
+        redoSteps[id, default: []].append(step)
+      } else {
+        _ = redoSteps[id]?.popLast()
+        undoSteps[id, default: []].append(step)
       }
-      return saved
+    case .restore(let id):
+      undoSteps[id] = []
+      redoSteps[id] = []
+    }
+  }
+  @discardableResult private func transact(
+    _ mutation: WorkspaceMutation, history: HistoryEffect = .none
+  ) async -> Bool {
+    guard !busy && !loading && !unreadable && pending == nil else { return false }
+    busy = true
+    defer { busy = false }
+    do {
+      let proposal = try await store.prepare(database, mutation: mutation, author: author)
+      pendingHistory = history
+      return await persist(proposal)
     } catch {
       self.error = error.localizedDescription
       return false
     }
   }
+  func edit(_ command: Edit, label: String) async -> Bool {
+    guard canEdit, let before = branch?.heads.first else { return false }
+    let spaceID = selectedSpace
+    let historyLabel = String(label.prefix(240))
+    return await transact(.edit(spaceID, command, historyLabel),
+                          history: .edit(space: spaceID, before: before, label: historyLabel))
+  }
+
   func createSpace(name: String, zone: String) async -> Bool {
-    do {
-      let next = try Rules.create(database, name: name, author: author, zone: zone)
-      if await commit(next) {
-        openSpace(next.spaces.last!.id)
-        return true
-      }
-      return false
-    } catch {
-      self.error = error.localizedDescription
-      return false
-    }
+    let priorIDs = Set(database.spaces.map(\.id))
+    guard await transact(.create(name, zone)) else { return false }
+    if let added = database.spaces.last(where: { !priorIDs.contains($0.id) }) { openSpace(added.id) }
+    return true
+  }
+  func undo() async { await travel(backward: true) }
+  func redo() async { await travel(backward: false) }
+  private func travel(backward: Bool) async {
+    guard backward ? canUndo : canRedo else { return }
+    let spaceID = selectedSpace
+    guard let step = (backward ? undoSteps[spaceID] : redoSteps[spaceID])?.last,
+      let target = branch?.revisions.first(where: { $0.id == (backward ? step.before : step.after) })
+    else { return }
+    let label = (backward ? "Deshacer: " : "Rehacer: ") + String(step.label.prefix(225))
+    _ = await transact(.append(spaceID, target.data, label),
+                       history: .travel(space: spaceID, step: step, backward: backward))
   }
   func restore(_ revision: Revision) async {
-    undoSteps[selectedSpace] = []
-    redoSteps[selectedSpace] = []
-    do {
-      _ = await commit(
-        try Rules.restore(database, space: selectedSpace, revision: revision.id, author: author))
-    } catch { self.error = error.localizedDescription }
+    let spaceID = selectedSpace
+    _ = await transact(.restore(spaceID, revision.id), history: .restore(space: spaceID))
   }
+
   func exportWorkspace() {
-    do {
-      try Panels.save(
-        WorkspaceCodec.encode(pending ?? database), name: "Ade-backup.json", type: .json)
-    } catch { self.error = error.localizedDescription }
+    let snapshot = pending ?? database
+    Task {
+      do {
+        let data = try await store.export(snapshot)
+        try Panels.save(data, name: "Ade-backup.json", type: .json)
+      } catch { self.error = error.localizedDescription }
+    }
   }
   func importWorkspace() async {
     guard !busy && pending == nil else { return }
     do {
       guard let data = try Panels.open(types: [.json], maxBytes: 100_000_000) else { return }
-      if await commit(try Rules.merge(database, WorkspaceCodec.decode(data))) {
+      if await transact(.importData(data), history: .reset) {
         undoSteps = [:]
         redoSteps = [:]
         showSpaces = false
@@ -210,23 +232,23 @@ import UniformTypeIdentifiers
     busy = true
     defer { busy = false }
     do {
-      let (text, version) = try await store.recoverPrevious(expected: token)
-      database = try WorkspaceCodec.decode(Data(text.utf8))
-      token = version
+      let receipt = try await store.recoverSnapshot(expected: token)
+      database = receipt.database
+      token = receipt.token
       unreadable = false
       pending = nil
-      selectedSpace = database.spaces.first?.id ?? ""
-      notice = t(
-        "Copia anterior restaurada. El archivo dañado se conservó.",
-        "Previous backup restored. The damaged file was preserved.")
+      pendingHistory = .reset
+      undoSteps = [:]
+      redoSteps = [:]
+      reconcileSelection()
+      notice = t("Copia anterior restaurada. El archivo dañado se conservó.",
+                 "Previous backup restored. The damaged file was preserved.")
     } catch { self.error = error.localizedDescription }
   }
   func recoverBackup() async {
     do {
-      guard let text = try await store.backup() else { throw RuleError("No hay copia anterior") }
-      let db = try WorkspaceCodec.decode(Data(text.utf8))
-      // Export recovery first; never overwrite an unreadable current file automatically.
-      try Panels.save(WorkspaceCodec.encode(db), name: "Ade-recovered.json", type: .json)
+      let data = try await store.exportBackup()
+      try Panels.save(data, name: "Ade-recovered.json", type: .json)
     } catch { self.error = error.localizedDescription }
   }
 }

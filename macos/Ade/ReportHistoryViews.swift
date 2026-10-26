@@ -11,10 +11,21 @@ struct ResultsView: View {
   @State private var filter = ReportFilter()
   @State private var search = ""
   @State private var attendancePerson: Person?
+  @State private var computedRows: [ResultRow] = []
+  @State private var calculating = false
+  @State private var computedRequest: Request?
+  private struct Request: Hashable {
+    let space: String
+    let heads: [String]
+    let filter: ReportFilter
+  }
+  private var request: Request {
+    Request(space: m.selectedSpace, heads: m.branch?.heads ?? [], filter: filter)
+  }
   var body: some View {
     VStack(spacing: 0) {
       PageHeading(title: m.t("Resultados", "Results"), subtitle: m.space?.name ?? "") {
-        Button(m.t("Exportar CSV…", "Export CSV…")) { export() }.buttonStyle(ActionLink())
+        Button(m.t("Exportar CSV…", "Export CSV…")) { export() }.buttonStyle(ActionLink()).disabled(calculating || computedRequest != request)
       }
       if let s = m.space {
         VStack(alignment: .leading, spacing: 14) {
@@ -69,6 +80,13 @@ struct ResultsView: View {
               }
             }.padding(.vertical, 12)
             PaperRule(strong: true)
+            if calculating {
+              ProgressView(m.t("Calculando participación…", "Calculating participation…"))
+                .padding(24).frame(maxWidth: .infinity)
+            } else if rows.isEmpty {
+              Text(m.t("No hay personas que coincidan con la búsqueda.", "No people match your search."))
+                .foregroundStyle(.secondary).padding(24)
+            }
             ForEach(rows) { row in
               HStack {
                 Button {
@@ -90,6 +108,25 @@ struct ResultsView: View {
           }.padding(.horizontal, 28)
         }.frame(maxWidth: .infinity, maxHeight: .infinity)
       }
+    }.task(id: request) {
+      let requested = request
+      guard let space = m.space else { computedRows = []; computedRequest = nil; calculating = false; return }
+      calculating = true
+      computedRows = []
+      computedRequest = nil
+      do {
+        let results = try await m.store.report(space, filter: requested.filter)
+        guard !Task.isCancelled, request == requested else { return }
+        computedRows = space.people.map { person in
+          ResultRow(id: person.id, name: person.name, active: person.active,
+                    result: results[person.id] ?? Participation())
+        }
+        computedRequest = requested
+      } catch {
+        guard !Task.isCancelled, request == requested else { return }
+        m.error = error.localizedDescription
+      }
+      calculating = false
     }.sheet(item: $attendancePerson) { PersonParticipationView(personID: $0.id) }
       .onChange(of: m.selectedSpace) {
         filter = ReportFilter()
@@ -110,15 +147,11 @@ struct ResultsView: View {
       }
   }
   private var rows: [ResultRow] {
-    guard let s = m.space else { return [] }
-    return s.people.filter { search.isEmpty || $0.name.localizedCaseInsensitiveContains(search) }
-      .map { p in
-        ResultRow(
-          id: p.id, name: p.name, active: p.active,
-          result: (try? Rules.participation(s, person: p.id, filter: filter)) ?? Participation())
-      }
+    guard computedRequest == request else { return [] }
+    return computedRows.filter { search.isEmpty || $0.name.localizedCaseInsensitiveContains(search) }
   }
   private func export() {
+    guard !calculating, computedRequest == request else { return }
     func cell(_ value: String) -> String {
       let safe = ["=", "+", "-", "@"].contains(String(value.prefix(1))) ? "'" + value : value
       return "\"" + safe.replacingOccurrences(of: "\"", with: "\"\"") + "\""
@@ -194,7 +227,7 @@ struct HistoryView: View {
                 "Every restore adds a revision. Previous versions remain available.")
             ).font(.callout).foregroundStyle(.secondary)
             ScrollView([.horizontal, .vertical]) {
-              Text((try? String(decoding: WorkspaceCodec.encode(r.data), as: UTF8.self)) ?? "")
+              RevisionDataView(revision: r, store: m.store)
                 .font(.system(.caption, design: .monospaced)).textSelection(.enabled).frame(
                   maxWidth: .infinity, alignment: .leading
                 ).padding()
@@ -253,7 +286,7 @@ struct SettingsView: View {
   var body: some View {
     @Bindable var model = m
     VStack(spacing: 0) {
-      PageHeading(title: m.t("Configuración", "Settings"), subtitle: "Adê · " + (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "")) { EmptyView() }
+      PageHeading(title: m.t("Configuración", "Settings"), subtitle: "Adê · " + (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.4.0")) { EmptyView() }
       ScrollView {
         PaperForm {
           PaperSection(m.t("Apariencia · día y noche", "Appearance · day and night")) {
@@ -269,8 +302,8 @@ struct SettingsView: View {
               .accessibilityIdentifier("ambient-motion")
             Text(
               m.t(
-                "Se pausa cuando la ventana está inactiva y respeta Reducir movimiento.",
-                "Pauses when the window is inactive and respects Reduce Motion."
+                "Una trama de agua acompaña los cuatro temas. Respeta los ajustes de accesibilidad y se pausa en segundo plano.",
+                "A flowing halftone accompanies all four themes. Respects accessibility settings and pauses in the background."
               )
             )
             .font(.caption).foregroundStyle(.secondary)
@@ -317,7 +350,14 @@ struct SettingsView: View {
               )
             ).foregroundStyle(.secondary)
           }
-
+          PaperSection("ENKI · ASTRAL PAPER") {
+            Text(
+              m.t(
+                "Índigo y Grafito, de día y de noche. Tipografía condensada, textura y movimiento opcional.",
+                "Indigo and Graphite, by day and by night. Condensed typography, texture and optional motion."
+              ))
+            Text("Barlow Condensed · IBM Plex Mono · Inter").font(.custom(Enki.mono, size: 11))
+          }
         }.padding(32)
       }
     }.onAppear {
@@ -326,6 +366,20 @@ struct SettingsView: View {
     }.onChange(of: m.selectedSpace) {
       name = m.space?.name ?? ""
       zone = m.space?.timeZone ?? ""
+    }
+  }
+}
+
+private struct RevisionDataView: View {
+  let revision: Revision
+  let store: LocalStore
+  @State private var text = ""
+  var body: some View {
+    Text(text).task(id: revision.id) {
+      text = ""
+      let value = (try? await store.revisionText(revision.data)) ?? ""
+      guard !Task.isCancelled else { return }
+      text = value
     }
   }
 }

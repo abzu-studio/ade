@@ -20,8 +20,8 @@ import PDFKit
   static func fixture() throws -> Space {
     var s = Space(id: "space", name: "Prueba Adê")
     s.people = [
-      Person(id: "ana", name: "Persona A"), Person(id: "bea", name: "Persona B"),
-      Person(id: "car", name: "Persona C"),
+      Person(id: "ana", name: "Ana Pérez"), Person(id: "bea", name: "Beatriz"),
+      Person(id: "car", name: "Carla"),
     ]
     s.components = [Named(id: "service", name: "Servicio")]
     s.categories = [Category(id: "health", name: "Salud", componentId: "service")]
@@ -276,8 +276,12 @@ import PDFKit
     let pdf = try NativePDF.generate(space: s, template: template, options: options)
     let doc = PDFDocument(data: pdf)!
     try check(
-      doc.pageCount >= 1 && doc.string?.contains("Persona A") == true
+      doc.pageCount >= 1 && doc.string?.contains("Ana Pérez") == true
         && doc.string?.contains(r.id) == true, "native PDF real data and provenance")
+    let personalPDF = PDFDocument(data: try NativePDF.generate(
+      space: s, template: NativePDF.defaultTemplate(), options: options))!
+    try check(personalPDF.string?.contains("Beatriz") == false,
+              "individual PDF excludes other participants")
     template.blocks = [
       TemplateBlock(
         type: .columns,
@@ -382,13 +386,24 @@ import PDFKit
       totals.present == 1 && totals.absent == 1 && totals.percentage == 50,
       "aggregate counts records without averaging percentages")
     try await modelFlow()
+    try await transactionFailures()
+    try await transactionConflicts()
+    try reportParity()
     print("ALL \(count) NATIVE CHECKS PASSED")
   }
   @MainActor static func modelFlow() async throws {
     let directory = FileManager.default.temporaryDirectory.appendingPathComponent(
       "AdeModelTests-" + UUID().uuidString)
-    let model = AppModel(directory: directory)
+    let preferenceSuite = "AdeCoreTests-" + UUID().uuidString
+    let preferences = UserDefaults(suiteName: preferenceSuite)!
+    defer {
+      preferences.removePersistentDomain(forName: preferenceSuite)
+      try? FileManager.default.removeItem(at: directory)
+    }
+    let model = AppModel(directory: directory, preferences: preferences)
     await model.load()
+    try check(model.database.spaces.isEmpty && model.showSpaces, "fresh install has no preloaded records")
+    try check(model.author == "Local", "fresh install uses a neutral author")
     let created = await model.createSpace(name: "Native state", zone: "America/Puerto_Rico")
     try check(created && model.space?.name == "Native state", "native model creates space")
     let saved = await model.edit(.person(Person(name: "Undo test")), label: "Add person")
@@ -400,11 +415,139 @@ import PDFKit
     await model.redo()
     try check(model.space?.people.count == 1 && !model.canRedo, "redo restores next snapshot")
     try check(model.branch?.revisions.count == 4, "undo and redo preserve all revisions")
-    let reopened = AppModel(directory: directory)
+    let reopened = AppModel(directory: directory, preferences: preferences)
     await reopened.load()
     try check(
       reopened.space?.people.count == 1 && reopened.branch?.revisions.count == 4,
       "undo redo persisted end to end")
+  }
+
+  static func reportParity() throws {
+    var space = try fixture()
+    space.events = []
+    space.attendance = []
+    for i in 0..<48 {
+      var event = Activity(id: "indexed-\(i)", name: "Event \(i)",
+                           date: i % 2 == 0 ? "2026-03-10" : "2026-09-10",
+                           componentId: "service", categoryId: i % 3 == 0 ? "health" : nil)
+      event.status = i % 5 == 0 ? .draft : i % 7 == 0 ? .cancelled : .completed
+      event.countsForAttendance = i % 11 != 0
+      event.participantIds = i % 2 == 0 ? ["ana", "bea"] : ["ana", "car"]
+      space.events.append(event)
+      if event.canRecord {
+        for (j, id) in event.participantIds.enumerated() where i % 9 != 0 {
+          space.attendance.append(Attendance(eventId: event.id, personId: id,
+            status: AttendanceStatus.allCases[(i + j) % 4]))
+        }
+      }
+    }
+    try Rules.validate(space)
+    let filters = [ReportFilter(), ReportFilter(periodId: "period"), ReportFilter(groupId: "group"),
+                   ReportFilter(componentId: "service"), ReportFilter(categoryId: "health"),
+                   ReportFilter(eventId: "indexed-3"), ReportFilter(uncategorized: true)]
+    // Independent direct traversal retains the original rule as an oracle.
+    for filter in filters {
+      let results = try Rules.report(space, filter: filter)
+      for person in space.people {
+        var expected = Participation()
+        for event in space.events where event.participantIds.contains(person.id) {
+          if let period = space.periods.first(where: { $0.id == filter.periodId }),
+            event.date < period.start || event.date > period.end { continue }
+          if !filter.groupId.isEmpty && !space.member(person.id, group: filter.groupId, on: event.date) { continue }
+          if !filter.componentId.isEmpty && event.componentId != filter.componentId { continue }
+          if !filter.categoryId.isEmpty && event.categoryId != filter.categoryId { continue }
+          if !filter.eventId.isEmpty && event.id != filter.eventId { continue }
+          if filter.uncategorized && event.categoryId != nil { continue }
+          if !event.canRecord || !event.countsForAttendance { expected.excluded += 1; continue }
+          switch space.record(event.id, person.id)?.status ?? .pending {
+          case .present: expected.present += 1
+          case .absent: expected.absent += 1
+          case .excused: expected.excused += 1
+          case .pending: expected.pending += 1
+          }
+        }
+        let actual = results[person.id]!
+        try check([actual.present, actual.absent, actual.excused, actual.pending, actual.excluded] ==
+                  [expected.present, expected.absent, expected.excused, expected.pending, expected.excluded],
+                  "indexed report parity \(person.id) / \(filter)")
+      }
+    }
+  }
+  static func transactionConflicts() async throws {
+    let directory = FileManager.default.temporaryDirectory.appendingPathComponent("AdeTransactions-" + UUID().uuidString)
+    let store = LocalStore(directory: directory)
+    let base = try Rules.create(Database(), name: "Concurrent", author: "Tests")
+    let receipt = try await store.commit(base, expected: "empty")
+    let id = base.spaces[0].id
+    let a = try Rules.execute(base, space: id, edit: .person(Person(name: "First")), label: "First", author: "A")
+    let b = try Rules.execute(base, space: id, edit: .person(Person(name: "Second")), label: "Second", author: "B")
+    async let one = store.commit(a, expected: receipt.token)
+    async let two = LocalStore(directory: directory).commit(b, expected: receipt.token)
+    _ = try await (one, two)
+    let final = try await store.snapshot().database.get()
+    try check(final.spaces[0].heads.count == 2 && final.spaces[0].revisions.count == 3,
+              "transactional merge retains both concurrent branches")
+    try check(Set(final.spaces[0].revisions.flatMap { $0.data.people.map(\.name) }) == ["First", "Second"],
+              "transactional merge loses neither writer")
+    let original = try Data(contentsOf: directory.appendingPathComponent("workspace.json"))
+    var invalid = final
+    invalid.schemaVersion = 999
+    do { _ = try await store.commit(invalid, expected: "stale"); throw RuleError("Invalid commit accepted") }
+    catch { try check(try Data(contentsOf: directory.appendingPathComponent("workspace.json")) == original,
+                      "invalid transaction leaves disk bytes unchanged") }
+  }
+  @MainActor static func transactionFailures() async throws {
+    let directory = FileManager.default.temporaryDirectory.appendingPathComponent("AdeFailure-" + UUID().uuidString)
+    let preferenceSuite = "AdeCoreTests-" + UUID().uuidString
+    let preferences = UserDefaults(suiteName: preferenceSuite)!
+    defer {
+      preferences.removePersistentDomain(forName: preferenceSuite)
+      try? FileManager.default.removeItem(at: directory)
+    }
+    let model = AppModel(directory: directory, preferences: preferences)
+    await model.load()
+    _ = await model.createSpace(name: "Failure recovery", zone: "America/Puerto_Rico")
+    let prior = model.database
+    let moved = directory.appendingPathExtension("preserved")
+    try FileManager.default.moveItem(at: directory, to: moved)
+    try Data("blocked".utf8).write(to: directory)
+    let saved = await model.edit(.person(Person(name: "Retained")), label: "Retain failed write")
+    try check(!saved && model.database == prior && model.pending != nil && !model.busy,
+              "failed transaction preserves visible state and recoverable proposal")
+    try FileManager.default.removeItem(at: directory)
+    try FileManager.default.moveItem(at: moved, to: directory)
+    let retry = await model.commit(model.pending!)
+    try check(retry && model.pending == nil && model.space?.people.first?.name == "Retained",
+              "retry saves the exact pending proposal")
+    try check(model.canUndo, "retry registers undo for the recovered edit")
+    await model.undo()
+    try check(model.space?.people.isEmpty == true && model.canRedo,
+              "undo after retry restores the exact prior snapshot")
+    await model.redo()
+    try check(model.space?.people.first?.name == "Retained", "redo after retry restores recovered edit")
+    try FileManager.default.moveItem(at: directory, to: moved)
+    try Data("blocked".utf8).write(to: directory)
+    await model.undo()
+    try check(model.pending != nil && model.space?.people.count == 1,
+              "failed undo does not change visible data")
+    try FileManager.default.removeItem(at: directory)
+    try FileManager.default.moveItem(at: moved, to: directory)
+    let retriedUndo = await model.commit(model.pending!)
+    try check(retriedUndo && model.space?.people.isEmpty == true && model.canRedo && !model.canUndo,
+              "retry completes undo history exactly once")
+    await model.redo()
+    try check(model.space?.people.count == 1 && model.canUndo && !model.canRedo,
+              "redo after retried undo restores data exactly once")
+    try Data([0xff]).write(to: directory.appendingPathComponent("workspace.json"), options: .atomic)
+    await model.load()
+    try check(model.unreadable, "unreadable load retains recovery token")
+    await model.repairFromBackup()
+    try check(!model.unreadable && model.space != nil, "model can recover a malformed workspace after actor decode failure")
+    try check(!model.canUndo && !model.canRedo, "backup recovery clears obsolete session undo history")
+    let longName = String(repeating: "a", count: 240)
+    let longLabelSaved = await model.edit(.person(Person(name: longName)), label: "Asistencia: " + longName)
+    try check(longLabelSaved && model.branch?.visible?.label.count == 240,
+              "valid maximum length name does not overflow generated revision label")
   }
 
 }

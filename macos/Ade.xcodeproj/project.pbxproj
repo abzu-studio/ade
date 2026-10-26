@@ -11,6 +11,7 @@
 		09B0162F152032FC3887F787 /* LocalStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64C3D6FF38971E6EAF6042E6 /* LocalStore.swift */; };
 		0BF606B0DAC5DA43F3C2A108 /* CatalogViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89B987BA8BDC456F8102FD80 /* CatalogViews.swift */; };
 		11AC67143BC47452E020EFEB /* AppIcon.icns in Resources */ = {isa = PBXBuildFile; fileRef = 833E3B87DE12D2D66D3C8058 /* AppIcon.icns */; };
+		19F37283A25763E50EFE9A57 /* QuickOpen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 214929FFFDFF494895428397 /* QuickOpen.swift */; };
 		276D3342E2AA89C9385B3C50 /* AdeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C29AF2AC82517BF22E5F388 /* AdeApp.swift */; };
 		4BD9828E0F1A1A643ED0B09B /* OpeningSound.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBB68D047B38B79108DF24C0 /* OpeningSound.swift */; };
 		57B567B5D8CA30205AA0A224 /* WelcomeExperience.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE2B1F127FC7E0890CA1FCD6 /* WelcomeExperience.swift */; };
@@ -48,6 +49,7 @@
 		0C0DE67E60D8EE81A7ED9340 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		0E7DECD6F6B6D71484AFE961 /* WorkflowTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkflowTests.swift; sourceTree = "<group>"; };
 		1701D91E7D7AA0D9A49DDBB3 /* PaperControls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaperControls.swift; sourceTree = "<group>"; };
+		214929FFFDFF494895428397 /* QuickOpen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickOpen.swift; sourceTree = "<group>"; };
 		2F945C8D382325B65B57396A /* Resources */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Resources; path = Ade/Resources; sourceTree = SOURCE_ROOT; };
 		329DF6A808249EA6FD9C15DF /* EventViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventViews.swift; sourceTree = "<group>"; };
 		372548E10D210531CEDDEAEB /* OverviewViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverviewViews.swift; sourceTree = "<group>"; };
@@ -115,6 +117,7 @@
 				41A3840A4B698C3B361674C6 /* PaperMotion.swift */,
 				B9F2A20D360DA9D6720E598D /* PaperScenes.swift */,
 				581FDEF97277A161C4A118D6 /* PersonParticipationView.swift */,
+				214929FFFDFF494895428397 /* QuickOpen.swift */,
 				70A2919833DE9EE4D62F9490 /* ReportHistoryViews.swift */,
 				471755A9C46D289B1DBE8C5E /* Rules.swift */,
 				0C0DE67E60D8EE81A7ED9340 /* Theme.swift */,
@@ -252,6 +255,7 @@
 				DDCD3A0E61B0F85CD30B3770 /* PaperMotion.swift in Sources */,
 				CADC249AB1132AC00E4A3AF5 /* PaperScenes.swift in Sources */,
 				95B20FEC3E85D9DC50055C4D /* PersonParticipationView.swift in Sources */,
+				19F37283A25763E50EFE9A57 /* QuickOpen.swift in Sources */,
 				ACF02675E83511F463B6C77F /* ReportHistoryViews.swift in Sources */,
 				8ABCA6BF2DC778B1DAC68542 /* Rules.swift in Sources */,
 				819EB5E1371C18CDE7B790D5 /* Theme.swift in Sources */,
@@ -309,7 +313,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 11;
+				CURRENT_PROJECT_VERSION = 15;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -330,7 +334,7 @@
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.3.2;
+				MARKETING_VERSION = 0.4.1;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -378,7 +382,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 11;
+				CURRENT_PROJECT_VERSION = 15;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = NO;
@@ -405,7 +409,7 @@
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.3.2;
+				MARKETING_VERSION = 0.4.1;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;

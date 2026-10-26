@@ -1,4 +1,4 @@
-# Arquitectura 0.3.2
+# Arquitectura 0.4.1
 
 - `Domain.swift`: entidades y codificación JSON v1.
 - `Rules.swift`: validación, operaciones de dominio, cálculos, sugerencias y revisiones.
@@ -9,4 +9,4 @@
 - `Theme.swift`, `PaperAtmosphere.swift` y `PaperMotion.swift`: apariencia y movimiento.
 - `DevelopmentFixtures.swift`: datos sintéticos exclusivos de Debug.
 
-No contiene WebKit, un servidor web ni un runtime JavaScript. Esta versión coordina comandos en MainActor. El formato persistido permanece en versión 1.
+No contiene WebKit, un servidor web ni un runtime JavaScript. MainActor coordina la interfaz; LocalStore prepara transacciones, cálculos y serialización fuera del hilo principal. El formato persistido permanece en versión 1.

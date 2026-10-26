@@ -11,6 +11,23 @@ struct PersonParticipationView: View {
   @State private var component = ""
   @State private var error: String?
 
+  @State private var computedSlices: [ParticipationSlice]?
+  @State private var computedRequest: Request?
+  @State private var calculating = true
+  private struct Request: Hashable {
+    let space: String
+    let heads: [String]
+    let person: String
+    let period: String
+    let group: String
+  }
+  private var request: Request {
+    Request(space: m.selectedSpace, heads: m.branch?.heads ?? [], person: personID, period: period, group: group)
+  }
+
+  private var slices: [ParticipationSlice]? {
+    computedRequest == request ? computedSlices : nil
+  }
   var body: some View {
     VStack(alignment: .leading, spacing: 18) {
       header
@@ -19,6 +36,9 @@ struct PersonParticipationView: View {
         if let slices, let total = slices.first {
           summary(total)
           breakdown(slices)
+        } else if calculating {
+          ProgressView(m.t("Calculando asistencia…", "Calculating attendance…"))
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
           Text(
             m.t(
@@ -36,6 +56,23 @@ struct PersonParticipationView: View {
       .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
     }.padding(30).frame(width: 850, height: 640).background { PaperGlassSurface() }
       .foregroundStyle(Enki.ink).buttonStyle(ActionLink())
+      .task(id: request) {
+        let requested = request
+        computedSlices = nil
+        computedRequest = nil
+        calculating = true
+        guard let space = m.space else { calculating = false; return }
+        do {
+          let result = try await m.store.breakdown(space, person: requested.person, period: requested.period, group: requested.group)
+          guard !Task.isCancelled, request == requested else { return }
+          computedSlices = result
+          computedRequest = requested
+        } catch {
+          guard !Task.isCancelled, request == requested else { return }
+          self.error = error.localizedDescription
+        }
+        calculating = false
+      }
       .onChange(of: m.branch?.heads) {
         guard let space = m.space else { return }
         if !space.periods.contains(where: { $0.id == period }) { period = "" }
@@ -43,7 +80,7 @@ struct PersonParticipationView: View {
         if !space.components.contains(where: { $0.id == component }) { component = "" }
       }
       .alert(
-        m.t("No se pudo exportar", "Unable to export"),
+        m.t("No se pudo completar la acción", "Unable to complete action"),
         isPresented: Binding(
           get: { error != nil }, set: { if !$0 { error = nil } })
       ) {
@@ -143,10 +180,6 @@ struct PersonParticipationView: View {
     return [excused, pending, excluded].joined(separator: " · ")
   }
 
-  private var slices: [ParticipationSlice]? {
-    guard let space = m.space else { return nil }
-    return try? Rules.participationBreakdown(space, person: personID, period: period, group: group)
-  }
   private func formula(_ r: Participation) -> String {
     "\(r.present) / (\(r.present) + \(r.absent))"
   }

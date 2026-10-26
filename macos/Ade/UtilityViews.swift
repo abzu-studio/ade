@@ -37,8 +37,8 @@ struct DataView: View {
           ) { Task { await m.load() } }
           Text(
             m.t(
-              "La colaboración se realiza intercambiando archivos. Adê no sincroniza con iCloud ni modifica Obsidian.",
-              "Collaboration uses exchanged files. Adê does not sync to iCloud or modify Obsidian.")
+              "Comparte un espacio exportándolo e importándolo en otro Mac. Los cambios en conflicto se conservan para revisarlos.",
+              "Share a space by exporting it and importing it on another Mac. Conflicting changes are preserved for review.")
           ).font(.callout).foregroundStyle(.secondary).padding(.top, 28)
         }.padding(.horizontal, 32)
       }
