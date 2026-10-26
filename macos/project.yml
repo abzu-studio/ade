@@ -9,6 +9,7 @@ settings:
     MARKETING_VERSION: '0.3.2'
     CURRENT_PROJECT_VERSION: 11
     CODE_SIGN_STYLE: Automatic
+    CODE_SIGN_ENTITLEMENTS: Ade.entitlements
     ENABLE_APP_SANDBOX: YES
     ENABLE_HARDENED_RUNTIME: NO
     ENABLE_OUTGOING_NETWORK_CONNECTIONS: NO
@@ -21,6 +22,7 @@ settings:
   configs:
     Release:
       ENABLE_HARDENED_RUNTIME: YES
+      CODE_SIGN_INJECT_BASE_ENTITLEMENTS: NO
 targets:
   Ade:
     type: application

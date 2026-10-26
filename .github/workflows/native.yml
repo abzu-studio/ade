@@ -18,3 +18,5 @@ jobs:
           xcodebuild -project macos/Ade.xcodeproj -scheme Ade
           -configuration Release -derivedDataPath build/ReleaseDerived
           CODE_SIGN_IDENTITY=- ARCHS='arm64 x86_64' ONLY_ACTIVE_ARCH=NO build
+      - name: Verify Release contents and signing restrictions
+        run: python3 scripts/package-mac.py verify build/ReleaseDerived/Build/Products/Release/Ade.app
