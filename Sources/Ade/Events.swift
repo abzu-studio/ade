@@ -8,10 +8,11 @@ struct EventsScreen: View {
 
     var body: some View {
         SpacePage(title: store.text("events.title")) {
-            HSplitView {
+            HStack(spacing: 0) {
                 VStack(alignment: .leading, spacing: 8) {
                     Verb(title: store.text("events.add")) { adding = true }
                         .padding(.horizontal, 12)
+                        .padding(.top, 8)
                         .disabled(store.components(in: store.spaceId ?? "").isEmpty)
                     if events.isEmpty {
                         Text(store.text("events.empty"))
@@ -22,24 +23,28 @@ struct EventsScreen: View {
                     ScrollView {
                         VStack(spacing: 0) {
                             ForEach(events) { event in
-                                HStack(spacing: 6) {
+                                VStack(alignment: .leading, spacing: 6) {
                                     ClayRow(title: event.title, subtitle: event.date, selected: store.eventId == event.id) {
                                         store.eventId = event.id
                                     }
-                                    Stamp(title: store.text("status.\(event.status.rawValue)"), kind: stampKind(event.status))
-                                    if event.status == .scheduled || event.status == .completed || event.status == .draft {
-                                        Verb(title: store.text("events.cancel")) {
-                                            guard let spaceId = store.spaceId else { return }
-                                            store.perform(.setEventStatus(spaceId: spaceId, eventId: event.id, status: .cancelled))
+                                    FlowRow(spacing: 8) {
+                                        Stamp(title: store.text("status.\(event.status.rawValue)"), kind: stampKind(event.status))
+                                        if event.status == .scheduled || event.status == .completed || event.status == .draft {
+                                            Verb(title: store.text("events.cancel")) {
+                                                guard let spaceId = store.spaceId else { return }
+                                                store.perform(.setEventStatus(spaceId: spaceId, eventId: event.id, status: .cancelled))
+                                            }
                                         }
                                     }
+                                    .padding(.horizontal, 12)
+                                    .padding(.bottom, 8)
                                 }
-                                .padding(.trailing, 8)
                             }
                         }
                     }
                 }
-                .frame(minWidth: 300, idealWidth: 380)
+                .frame(width: 300)
+                Rectangle().fill(Clay.tint).frame(width: 1)
                 detail
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
@@ -113,7 +118,7 @@ struct EventDetail: View {
             Text(event.date)
                 .font(AdeFont.kicker(12))
                 .foregroundStyle(Clay.ink)
-            HStack(spacing: 8) {
+            FlowRow(spacing: 12, lineSpacing: 8) {
                 ForEach(eventTransitions[event.status] ?? [], id: \.self) { next in
                     if next == .cancelled {
                         Verb(title: store.text("events.cancel")) { confirmCancel = true }
@@ -269,18 +274,19 @@ struct EventDetail: View {
         let record = store.database.attendance.first { $0.eventId == event.id && $0.personId == person.id }
         let selected = store.attendanceIndex == index
         return VStack(alignment: .leading, spacing: 6) {
-            HStack {
+            HStack(alignment: .center, spacing: 8) {
                 Text(person.name)
                     .font(AdeFont.medium(15))
                     .foregroundStyle(Clay.umber)
-                Spacer()
+                    .lineLimit(1)
+                Spacer(minLength: 8)
                 if let record {
                     Stamp(title: store.text("attendance.\(record.state.rawValue)"), kind: .pressed)
                 } else {
                     Stamp(title: store.text("attendance.unrecorded"))
                 }
             }
-            HStack(spacing: 8) {
+            FlowRow(spacing: 8) {
                 ForEach(AttendanceState.allCases, id: \.self) { state in
                     Stamp(title: store.text("attendance.\(state.rawValue)"), kind: record?.state == state ? .pressed : .plain) {
                         guard let spaceId = store.spaceId else { return }
@@ -342,7 +348,7 @@ struct EventDetail: View {
                 .font(AdeFont.body(12))
                 .foregroundStyle(Clay.umber.opacity(0.85))
             }
-            HStack(spacing: 10) {
+            FlowRow(spacing: 10) {
                 ForEach(nextVolunteerStates(record?.state), id: \.self) { state in
                     let selectBlocked = state == .selected && !suggestion.eligible && record?.state != .selected
                     Verb(title: volunteerTitle(state), enabled: !selectBlocked) {

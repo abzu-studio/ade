@@ -12,12 +12,15 @@ struct Verb: View {
             Text(title.uppercased())
                 .font(AdeFont.kicker(12))
                 .tracking(0.7)
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: true)
                 .underline(true, color: hover && enabled ? Clay.umber : Clay.ink)
                 .foregroundStyle(hover && enabled ? Clay.umber : Clay.ink)
                 .opacity(enabled ? 1 : 0.4)
         }
         .buttonStyle(.plain)
         .disabled(!enabled)
+        .fixedSize(horizontal: true, vertical: true)
         .onHover { hover = $0 }
     }
 }
@@ -33,6 +36,8 @@ struct Stamp: View {
         let label = Text(title.uppercased())
             .font(AdeFont.kicker(11))
             .tracking(0.8)
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: true)
             .padding(.horizontal, 7)
             .padding(.vertical, 3)
             .foregroundStyle(foreground)
@@ -41,9 +46,11 @@ struct Stamp: View {
             .strikethrough(kind == .cancelled, color: Clay.umber)
             .opacity(kind == .cancelled ? 0.75 : 1)
         if let action {
-            Button(action: action) { label }.buttonStyle(.plain)
+            Button(action: action) { label }
+                .buttonStyle(.plain)
+                .fixedSize(horizontal: true, vertical: true)
         } else {
-            label
+            label.fixedSize(horizontal: true, vertical: true)
         }
     }
 
@@ -67,6 +74,62 @@ struct Stamp: View {
         case .pressed, .scheduled: return Clay.ink
         case .completed, .plain, .cancelled: return Clay.umber
         }
+    }
+}
+
+struct FlowRow: Layout {
+    var spacing: CGFloat = 8
+    var lineSpacing: CGFloat = 8
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let maxWidth = proposal.width ?? .greatestFiniteMagnitude
+        let lines = rows(maxWidth: maxWidth, subviews: subviews)
+        let width = proposal.width ?? lines.map(\.width).max() ?? 0
+        let height = lines.reduce(0) { $0 + $1.height } + lineSpacing * CGFloat(max(0, lines.count - 1))
+        return CGSize(width: width, height: height)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let lines = rows(maxWidth: bounds.width, subviews: subviews)
+        var y = bounds.minY
+        var index = 0
+        for line in lines {
+            var x = bounds.minX
+            for size in line.sizes {
+                subviews[index].place(
+                    at: CGPoint(x: x, y: y),
+                    anchor: .topLeading,
+                    proposal: ProposedViewSize(width: size.width, height: size.height)
+                )
+                x += size.width + spacing
+                index += 1
+            }
+            y += line.height + lineSpacing
+        }
+    }
+
+    private struct Row {
+        var sizes: [CGSize] = []
+        var width: CGFloat = 0
+        var height: CGFloat = 0
+    }
+
+    private func rows(maxWidth: CGFloat, subviews: Subviews) -> [Row] {
+        var lines: [Row] = []
+        var current = Row()
+        for view in subviews {
+            let size = view.sizeThatFits(.unspecified)
+            let next = current.sizes.isEmpty ? size.width : current.width + spacing + size.width
+            if !current.sizes.isEmpty, next > maxWidth {
+                lines.append(current)
+                current = Row()
+            }
+            current.sizes.append(size)
+            current.width = current.sizes.count == 1 ? size.width : current.width + spacing + size.width
+            current.height = max(current.height, size.height)
+        }
+        if !current.sizes.isEmpty { lines.append(current) }
+        return lines
     }
 }
 
@@ -230,21 +293,17 @@ struct Sidebar: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Button { store.goHome() } label: {
-                HStack(spacing: 8) {
-                    Image(nsImage: Marks.menuSmall)
-                        .resizable()
-                        .interpolation(.high)
-                        .frame(width: 22, height: 22)
-                    Text("ADÊ")
-                        .font(AdeFont.display(28))
-                        .tracking(1.4)
-                        .foregroundStyle(Clay.umber)
-                }
-                .padding(.horizontal, 14)
-                .padding(.top, 16)
-                .padding(.bottom, 12)
+                Image(nsImage: Marks.menuSmall)
+                    .resizable()
+                    .interpolation(.high)
+                    .frame(width: 28, height: 28)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 18)
+                    .padding(.bottom, 14)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Adê")
             if let space = store.space {
                 Text(space.name.uppercased())
                     .font(AdeFont.display(20))

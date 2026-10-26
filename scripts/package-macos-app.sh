@@ -54,9 +54,9 @@ cat > "$APP/Contents/Info.plist" <<'EOF'
   <key>CFBundlePackageType</key>
   <string>APPL</string>
   <key>CFBundleShortVersionString</key>
-  <string>1.0.0</string>
+  <string>1.0.1</string>
   <key>CFBundleVersion</key>
-  <string>1</string>
+  <string>2</string>
   <key>LSApplicationCategoryType</key>
   <string>public.app-category.productivity</string>
   <key>LSMinimumSystemVersion</key>
@@ -72,5 +72,5 @@ EOF
 if ! codesign --force --sign - "$APP"; then
   codesign --force --sign - "$APP/Contents/MacOS/Ade"
 fi
-ditto -c -k --keepParent "$APP" "$ROOT/dist/Ade-1.0.0-macOS.zip"
+ditto -c -k --keepParent "$APP" "$ROOT/dist/Ade-1.0.1-macOS.zip"
 echo "Packaged $APP"

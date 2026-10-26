@@ -16,7 +16,7 @@ bash scripts/package-macos-app.sh
 open "dist/Adê.app"
 ```
 
-`swift test` runs the rule suite in `Tests/AdeCoreTests`. The package script builds a release `.app`, generates the dock icon, and writes `dist/Ade-1.0.0-macOS.zip`.
+`swift test` runs the rule suite in `Tests/AdeCoreTests`. The package script builds a release `.app`, generates the dock icon, and writes `dist/Ade-1.0.1-macOS.zip`.
 
 ## Using it
 
