@@ -61,7 +61,6 @@ enum DayTheme: String, CaseIterable, Identifiable {
   static var onAccent: Color { isNight ? paper : onDark }
   static var stamp: Color { isNight ? (indigo ? accent : ink) : deep }
   static var atmosphere: Color { hex(isNight ? (indigo ? 0x6573D7 : 0x697582) : (indigo ? 0x777FA2 : 0x858B91)) }
-  static var outer: Color { hex(isNight ? (indigo ? 0x080B15 : 0x090B0D) : 0xE8E7E2) }
   static var side: Color { hex(isNight ? (indigo ? 0x101627 : 0x171B20) : 0xF1F1EE) }
   static var clay: Color { accent }
   static var rule: Color { hex(isNight ? (indigo ? 0x303953 : 0x343B43) : 0xD6D8D9) }

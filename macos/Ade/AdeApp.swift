@@ -43,6 +43,7 @@ import SwiftUI
         .custom("Inter-Regular", size: 13)
       ).frame(minWidth: 1160, minHeight: 720)
     }.defaultSize(width: 1280, height: 720)
+      .windowStyle(.hiddenTitleBar)
       .commands {
         CommandGroup(replacing: .newItem) {
           Button(model.t("Importar archivo…", "Import workspace…")) {
@@ -127,11 +128,10 @@ struct WorkspaceView: View {
         }
       }
     }.modifier(PaperAmbientLayout(scene: atmosphere))
-      .background(Enki.paper).foregroundStyle(Enki.ink)
+      .background(Enki.paper.ignoresSafeArea())
+      .ignoresSafeArea()
+      .foregroundStyle(Enki.ink)
       .overlay(alignment: .top) { PaperBusyIndicator(busy: model.busy) }
-      .overlay { Rectangle().strokeBorder(Enki.rule, lineWidth: 0.5) }
-      .modifier(PaperElevation())
-      .padding(18).background(Enki.outer)
       .environment(\.paperScene, atmosphere)
       .sheet(isPresented: Binding(get: { model.quickOpenRequested }, set: { model.quickOpenRequested = $0 })) {
         QuickOpen()

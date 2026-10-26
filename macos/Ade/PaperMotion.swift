@@ -131,23 +131,6 @@ struct PaperNumber: ViewModifier {
   }
 }
 
-/// Decorative layers never intercept events or become accessibility elements.
-struct PaperElevation: ViewModifier {
-  @Environment(\.accessibilityReduceTransparency) private var reducedTransparency
-  func body(content: Content) -> some View {
-    content.background {
-      Rectangle().fill(Enki.paper)
-        .shadow(color: Color.black.opacity(reducedTransparency ? 0 : 0.075), radius: 16, x: 0, y: 7)
-        .shadow(color: Color.black.opacity(reducedTransparency ? 0 : 0.035), radius: 2, x: 0, y: 1)
-        .allowsHitTesting(false).accessibilityHidden(true)
-    }
-    .overlay(alignment: .top) {
-      Rectangle().fill(.white.opacity(reducedTransparency ? 0 : (Enki.isNight ? 0.06 : 0.42))).frame(height: 1)
-        .allowsHitTesting(false).accessibilityHidden(true)
-    }
-  }
-}
-
 struct PaperFieldFace<Content: View>: View {
   @Environment(\.paperReduceMotion) private var reduced
   @FocusState private var focused: Bool
