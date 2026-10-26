@@ -97,8 +97,16 @@ export function Shell({ spaceId, children }: { spaceId: string; children: ReactN
       <div className="ade-sheet flex min-h-[calc(100vh-1.5rem)] md:min-h-[calc(100vh-2rem)]">
         <aside className="flex w-56 shrink-0 flex-col border-r border-[#e5c9b0]">
           <div className="flex flex-col gap-1 px-4 py-5">
-            <Link href="/" className="ade-display text-4xl">
-              {t("app.name")}
+            <Link href="/" className="inline-block w-fit">
+              <img
+                src="/brand/ade-menu-icon-32.png"
+                srcSet="/brand/ade-menu-icon-32.png 32w, /brand/ade-menu-icon-256.png 256w"
+                sizes="80px"
+                alt={t("app.name")}
+                width={80}
+                height={80}
+                className="h-20 w-20"
+              />
             </Link>
             <p className="truncate text-sm">{space.name}</p>
           </div>
@@ -176,7 +184,6 @@ export function Shell({ spaceId, children }: { spaceId: string; children: ReactN
           <main className="flex flex-col gap-6 p-6">
             {mac === false ? (
               <p role="alert" className="max-w-3xl border-b border-[#e5c9b0] pb-3 text-sm">
-                <span className="ade-kicker mr-3">{t("app.name")}</span>
                 {t("app.macNotice")}
               </p>
             ) : null}

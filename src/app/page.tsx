@@ -17,13 +17,20 @@ export default function HomePage() {
   return (
     <main className="ade-field min-h-screen p-3 md:p-4">
       <div className="ade-sheet mx-auto flex min-h-[calc(100vh-1.5rem)] max-w-3xl flex-col px-8 py-12 md:min-h-[calc(100vh-2rem)] md:px-12">
-        <h1 className="ade-display text-[5.5rem] md:text-[8rem]">{t("app.name")}</h1>
+        <h1>
+          <img
+            src="/brand/ade-menu-icon-256.png"
+            alt={t("app.name")}
+            width={256}
+            height={256}
+            className="h-48 w-48 md:h-56 md:w-56"
+          />
+        </h1>
         <p className="mt-4 max-w-md text-sm">{t("app.tagline")}</p>
         {mac === false ? (
-          <div role="alert" className="mt-6 max-w-xl border-t border-[#e5c9b0] pt-3">
-            <p className="ade-kicker">{t("app.name")}</p>
-            <p className="mt-1 text-sm">{t("app.macNotice")}</p>
-          </div>
+          <p role="alert" className="mt-6 max-w-xl border-t border-[#e5c9b0] pt-3 text-sm">
+            {t("app.macNotice")}
+          </p>
         ) : null}
         <form
           className="mt-12 flex flex-wrap items-baseline gap-x-4 gap-y-2 border-b border-[#e5c9b0] py-3"
