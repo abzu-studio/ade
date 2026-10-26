@@ -116,15 +116,25 @@ func capturePreviews(to directory: String) {
     NSApp.setActivationPolicy(.regular)
     NSApp.activate(ignoringOtherApps: true)
     var missing: [String] = []
+    var seenShots: [Data] = []
 
     func shot(_ name: String) {
         let url = folder.appendingPathComponent(name)
-        guard let image = renderShot(store), writePNG(image, url) else {
+        guard let image = renderShot(store), writePNG(image, url), let data = try? Data(contentsOf: url) else {
             missing.append(name)
             return
         }
-        let size = (try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? Int) ?? 0
-        if size < 12_000 { missing.append(name) }
+        let score = clayScore(image)
+        print(String(format: "preview %@ bytes=%d paper=%.2f yellow=%.2f size=%.0fx%.0f center=%@", name, data.count, score.paperFraction, score.yellowFraction, image.size.width, image.size.height, score.center))
+        if data.count < 12_000 || !score.ok {
+            missing.append("\(name):not-ui")
+            return
+        }
+        if seenShots.contains(data) {
+            missing.append("\(name):duplicate")
+            return
+        }
+        seenShots.append(data)
     }
 
     shot("01-home.png")
@@ -191,28 +201,140 @@ func capturePreviews(to directory: String) {
 
 @MainActor
 private func renderShot(_ store: AdeStore) -> NSImage? {
-    let view = RootView()
-        .environmentObject(store)
-        .frame(width: 1280, height: 800)
-        .preferredColorScheme(.light)
-    let renderer = ImageRenderer(content: view)
-    renderer.scale = 2
-    renderer.proposedSize = ProposedViewSize(width: 1280, height: 800)
-    if let image = renderer.nsImage, image.size.width >= 1000 {
-        return image
-    }
-    let host = NSHostingView(rootView: view)
-    host.frame = NSRect(x: 0, y: 0, width: 1280, height: 800)
-    let window = NSWindow(contentRect: host.frame, styleMask: [.titled], backing: .buffered, defer: false)
-    window.contentView = host
+    let root = AnyView(
+        RootView()
+            .environmentObject(store)
+            .frame(width: 1280, height: 800)
+            .preferredColorScheme(.light)
+    )
+    let controller = NSHostingController(rootView: root)
+    let window = NSWindow(
+        contentRect: NSRect(x: 40, y: 40, width: 1280, height: 800),
+        styleMask: [.titled, .closable],
+        backing: .buffered,
+        defer: false
+    )
+    window.isReleasedWhenClosed = false
+    window.title = "Adê"
+    window.contentViewController = controller
+    window.setContentSize(NSSize(width: 1280, height: 800))
     window.makeKeyAndOrderFront(nil)
-    host.layoutSubtreeIfNeeded()
-    RunLoop.current.run(until: Date().addingTimeInterval(0.25))
-    guard let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds) else { return nil }
-    host.cacheDisplay(in: host.bounds, to: rep)
-    let image = NSImage(size: host.bounds.size)
+    NSApp.activate(ignoringOtherApps: true)
+    let view = controller.view
+    view.frame = NSRect(x: 0, y: 0, width: 1280, height: 800)
+    view.wantsLayer = true
+    for _ in 0..<12 {
+        view.layoutSubtreeIfNeeded()
+        view.displayIfNeeded()
+        window.displayIfNeeded()
+        RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.08))
+    }
+    let candidates = [cacheImage(view), pdfImage(view), layerImage(view)].compactMap { $0 }
+    window.orderOut(nil)
+    if let clay = candidates.first(where: { clayScore($0).ok }) { return clay }
+    return candidates.first
+}
+
+private func cacheImage(_ view: NSView) -> NSImage? {
+    guard let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { return nil }
+    view.cacheDisplay(in: view.bounds, to: rep)
+    let image = NSImage(size: view.bounds.size)
     image.addRepresentation(rep)
     return image
+}
+
+private func pdfImage(_ view: NSView) -> NSImage? {
+    let data = view.dataWithPDF(inside: view.bounds)
+    guard let provider = CGDataProvider(data: data as CFData),
+          let document = CGPDFDocument(provider),
+          let page = document.page(at: 1) else { return nil }
+    let box = page.getBoxRect(.mediaBox)
+    guard box.width > 100, box.height > 100 else { return nil }
+    let scale: CGFloat = 2
+    guard let rep = bitmap(pixelsWide: Int(box.width * scale), pixelsHigh: Int(box.height * scale), pointSize: box.size),
+          let context = NSGraphicsContext(bitmapImageRep: rep) else { return nil }
+    NSGraphicsContext.saveGraphicsState()
+    NSGraphicsContext.current = context
+    context.cgContext.scaleBy(x: scale, y: scale)
+    context.cgContext.drawPDFPage(page)
+    NSGraphicsContext.restoreGraphicsState()
+    let image = NSImage(size: box.size)
+    image.addRepresentation(rep)
+    return image
+}
+
+private func layerImage(_ view: NSView) -> NSImage? {
+    guard let layer = view.layer else { return nil }
+    let scale = view.window?.backingScaleFactor ?? 2
+    let bounds = view.bounds
+    guard let rep = bitmap(pixelsWide: Int(bounds.width * scale), pixelsHigh: Int(bounds.height * scale), pointSize: bounds.size),
+          let context = NSGraphicsContext(bitmapImageRep: rep) else { return nil }
+    NSGraphicsContext.saveGraphicsState()
+    NSGraphicsContext.current = context
+    context.cgContext.translateBy(x: 0, y: bounds.height * scale)
+    context.cgContext.scaleBy(x: scale, y: -scale)
+    layer.render(in: context.cgContext)
+    NSGraphicsContext.restoreGraphicsState()
+    let image = NSImage(size: bounds.size)
+    image.addRepresentation(rep)
+    return image
+}
+
+private func bitmap(pixelsWide: Int, pixelsHigh: Int, pointSize: NSSize) -> NSBitmapImageRep? {
+    guard let rep = NSBitmapImageRep(
+        bitmapDataPlanes: nil,
+        pixelsWide: pixelsWide,
+        pixelsHigh: pixelsHigh,
+        bitsPerSample: 8,
+        samplesPerPixel: 4,
+        hasAlpha: true,
+        isPlanar: false,
+        colorSpaceName: .deviceRGB,
+        bytesPerRow: 0,
+        bitsPerPixel: 0
+    ) else { return nil }
+    rep.size = pointSize
+    return rep
+}
+
+private struct ClayScore {
+    var paper = 0
+    var yellow = 0
+    var samples = 0
+    var center = "none"
+    var paperFraction: Double { samples == 0 ? 0 : Double(paper) / Double(samples) }
+    var yellowFraction: Double { samples == 0 ? 0 : Double(yellow) / Double(samples) }
+    var ok: Bool { samples > 20 && yellowFraction < 0.12 && paperFraction > 0.08 }
+}
+
+private func clayScore(_ image: NSImage) -> ClayScore {
+    var score = ClayScore()
+    guard let tiff = image.tiffRepresentation, let rep = NSBitmapImageRep(data: tiff) else { return score }
+    let width = rep.pixelsWide
+    let height = rep.pixelsHigh
+    let stepX = max(1, width / 48)
+    let stepY = max(1, height / 28)
+    for y in stride(from: 0, to: height, by: stepY) {
+        for x in stride(from: 0, to: width, by: stepX) {
+            guard let rgb = rgbAt(rep, x: x, y: y) else { continue }
+            score.samples += 1
+            if rgb.r > 0.90 && rgb.g > 0.65 && rgb.b < 0.35 { score.yellow += 1 }
+            if rgb.r > 0.82 && rgb.g > 0.74 && rgb.b > 0.68 && rgb.b < 0.98 && (rgb.r - rgb.b) > 0.02 && (rgb.r - rgb.b) < 0.22 {
+                score.paper += 1
+            }
+            if x == (width / 2) / stepX * stepX && y == (height / 2) / stepY * stepY {
+                score.center = String(format: "%.2f,%.2f,%.2f", rgb.r, rgb.g, rgb.b)
+            }
+        }
+    }
+    return score
+}
+
+private func rgbAt(_ rep: NSBitmapImageRep, x: Int, y: Int) -> (r: CGFloat, g: CGFloat, b: CGFloat)? {
+    guard let color = rep.colorAt(x: x, y: y) else { return nil }
+    let rgb = color.usingColorSpace(.sRGB) ?? color
+    guard rgb.numberOfComponents >= 3 else { return nil }
+    return (rgb.redComponent, rgb.greenComponent, rgb.blueComponent)
 }
 
 private func writePNG(_ image: NSImage, _ url: URL) -> Bool {
