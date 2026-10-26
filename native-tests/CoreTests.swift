@@ -467,9 +467,8 @@ import PDFKit
           }
         }
         let actual = results[person.id]!
-        let actualCounts: [Int] = [actual.present, actual.absent, actual.excused, actual.pending, actual.excluded]
-        let expectedCounts: [Int] = [expected.present, expected.absent, expected.excused, expected.pending, expected.excluded]
-        try check(actualCounts == expectedCounts,
+        try check([actual.present, actual.absent, actual.excused, actual.pending, actual.excluded] ==
+                  [expected.present, expected.absent, expected.excused, expected.pending, expected.excluded],
                   "indexed report parity \(person.id) / \(filter)")
       }
     }

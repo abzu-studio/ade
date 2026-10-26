@@ -6,9 +6,13 @@ permissions:
   contents: read
 jobs:
   native:
-    runs-on: macos-15
+    runs-on: xcode-27
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_27.0.0.app/Contents/Developer
     steps:
       - uses: actions/checkout@v4
+      - name: Verify exact local toolchain
+        run: bash scripts/verify-toolchain.sh
       - name: Audit source tree
         run: python3 scripts/audit-source.py
       - name: Domain, persistence and PDF checks

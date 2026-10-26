@@ -7,19 +7,24 @@ on:
       - 'native-tests/**'
       - 'scripts/package-mac.py'
       - 'scripts/audit-source.py'
+      - 'scripts/verify-toolchain.sh'
       - '.github/workflows/xcode-release.yml'
       - 'docs/RELEASE-0.4.1.md'
 permissions:
   contents: read
 concurrency:
   group: xcode-dmg-041
-  cancel-in-progress: false
+  cancel-in-progress: true
 jobs:
   package:
-    runs-on: macos-15
+    runs-on: xcode-27
     timeout-minutes: 30
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_27.0.0.app/Contents/Developer
     steps:
       - uses: actions/checkout@v4
+      - name: Verify exact local toolchain
+        run: bash scripts/verify-toolchain.sh
       - name: Audit publication tree
         run: python3 scripts/audit-source.py
       - name: Verify rules, persistence, privacy defaults and PDF output
@@ -32,11 +37,13 @@ jobs:
           set -euo pipefail
           git archive --format=zip --prefix=Ade-0.4.1/ -o dist/preview/Ade-0.4.1-source.zip "$GITHUB_SHA" \
             macos native-tests scripts/test-native.sh scripts/package-mac.py scripts/audit-source.py \
-            scripts/generate-opening-sound.py docs/BUILD-XCODE.md docs/ARCHITECTURE-XCODE.md \
+            scripts/generate-opening-sound.py scripts/verify-toolchain.sh docs/BUILD-XCODE.md docs/ARCHITECTURE-XCODE.md \
             docs/RULES-XCODE.md docs/DISTRIBUTION.md docs/RELEASE-0.4.1.md \
             LICENSE PRIVACY.md THIRD_PARTY_NOTICES.md .gitignore
           printf 'Adê 0.4.1 (15)\nCommit: %s\nBuild: https://github.com/%s/actions/runs/%s\nSigning: ad hoc, not Apple notarized\n' \
             "$GITHUB_SHA" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" > dist/preview/BUILD.txt
+          xcodebuild -version >> dist/preview/BUILD.txt
+          xcrun swift --version >> dist/preview/BUILD.txt
           cp docs/RELEASE-0.4.1.md dist/preview/RELEASE.md
           cd dist/preview
           shasum -a 256 Ade-0.4.1-15-unsigned.dmg Ade-0.4.1-source.zip > SHA256SUMS.txt

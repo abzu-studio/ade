@@ -1,10 +1,11 @@
 # Compilar Adê 0.4.1 (15)
 
-Requiere macOS 14+, Xcode 16.4 o posterior y Python 3. El proyecto Xcode está generado e incluido; XcodeGen solo es necesario si se modifica `macos/project.yml`.
+Requiere macOS 14+, Xcode 27.0 (27A266a), Apple Swift 6.4 (swiftlang-6.4.0.34.1) y Python 3. El proyecto Xcode está generado e incluido; XcodeGen solo es necesario si se modifica `macos/project.yml`.
 
 Desde la raíz del archivo de código:
 
 ```sh
+bash scripts/verify-toolchain.sh
 ./scripts/test-native.sh
 python3 scripts/package-mac.py preview
 ```
