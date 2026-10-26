@@ -15,7 +15,7 @@ This repository builds two native apps. They do not share a data file, and nothi
 | | Xcode app | Swift package |
 | --- | --- | --- |
 | Source | `macos/` | `Sources/` |
-| Version | 0.4.7 (21) | 1.0.1 |
+| Version | 0.4.8 (22) | 1.0.1 |
 | Bundle | `com.ade.mac` | a different container |
 | Checks | `scripts/test-native.sh` on a Mac | `swift test` |
 | Package | `scripts/package-mac.py` | `scripts/package-macos-app.sh` |
@@ -28,7 +28,7 @@ The Swift package uses the weights in `docs/RULES.md`: completed 10, completed w
 
 ## Xcode app
 
-[Adê 0.4.7 for macOS](https://github.com/abzu-studio/ade/releases/tag/v0.4.7) is the universal build (Apple Silicon and Intel), macOS 14 or later. It starts empty. Ad hoc signature, not notarized. macOS may block the first launch; the release notes point at Apple's steps for opening a blocked app. Replacing the app keeps existing Xcode 0.4.x spaces because the bundle id and the file format are unchanged.
+[Adê 0.4.8 for macOS](https://github.com/abzu-studio/ade/releases/tag/v0.4.8) is the universal build (Apple Silicon and Intel), macOS 14 or later. It starts empty. Ad hoc signature, not notarized. macOS may block the first launch; the release notes point at Apple's steps for opening a blocked app. Replacing the app keeps existing Xcode 0.4.x spaces because the bundle id and the file format are unchanged.
 
 Screens: Spaces, Overview, People, Groups, Periods, Components, Events (attendance, volunteers, and the event itself), Participation, Documents, History, Conflicts, Data, Rules, and Settings.
 
