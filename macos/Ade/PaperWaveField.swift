@@ -6,8 +6,8 @@ import Foundation
 /// 0.4.5 blurred two fills and two strokes at the full window size on every frame.
 /// A kernel profile put that at about 9 ms per blur at 1× and about 96 ms at retina 2×,
 /// so four of them missed a 30 fps budget. The crest geometry is unchanged; it is drawn
-/// into a buffer whose long edge is at most 420 points and blurred there. The ordered
-/// dither stays a vector lattice in `SceneInk` — that loop was under 0.2 ms.
+/// into a buffer whose long edge is at most 420 points and blurred there in C.
+/// The ordered dither is the same formula, stamped into one image instead of a SwiftUI path.
 enum PaperWaveField {
   static func image(
     size: CGSize, time: Double, energy: Double, night: Bool,
@@ -28,7 +28,6 @@ private final class Cache: @unchecked Sendable {
   private var temp: UnsafeMutablePointer<UInt8>?
   private var output: UnsafeMutablePointer<UInt8>?
   private var layerContext: CGContext?
-  private var prefix: [Int] = []
 
   func image(
     size: CGSize, time: Double, energy: Double, night: Bool,
@@ -141,53 +140,10 @@ private final class Cache: @unchecked Sendable {
     return CGColor(gray: 0, alpha: 0)
   }
 
-  /// Three box passes stand in for the wide SwiftUI blur. Radius is in buffer pixels.
+  /// Three box passes. The loop lives in C so a debug build does not interpret it per pixel.
   private func blur(_ pixels: UnsafeMutablePointer<UInt8>, _ w: Int, _ h: Int, _ radius: Int) {
     guard let temp else { return }
-    let pass = max(1, radius / 3)
-    for _ in 0..<3 {
-      blurHorizontal(pixels, temp, w, h, pass)
-      blurVertical(temp, pixels, w, h, pass)
-    }
-  }
-
-  private func blurHorizontal(
-    _ src: UnsafePointer<UInt8>, _ dst: UnsafeMutablePointer<UInt8>, _ w: Int, _ h: Int, _ radius: Int
-  ) {
-    if prefix.count < w + 1 { prefix = [Int](repeating: 0, count: w + 1) }
-    for y in 0..<h {
-      let row = y * w * 4
-      for channel in 0..<4 {
-        prefix[0] = 0
-        for x in 0..<w {
-          prefix[x + 1] = prefix[x] + Int(src[row + x * 4 + channel])
-        }
-        for x in 0..<w {
-          let start = max(0, x - radius)
-          let end = min(w - 1, x + radius)
-          dst[row + x * 4 + channel] = UInt8((prefix[end + 1] - prefix[start]) / (end - start + 1))
-        }
-      }
-    }
-  }
-
-  private func blurVertical(
-    _ src: UnsafePointer<UInt8>, _ dst: UnsafeMutablePointer<UInt8>, _ w: Int, _ h: Int, _ radius: Int
-  ) {
-    if prefix.count < h + 1 { prefix = [Int](repeating: 0, count: h + 1) }
-    for x in 0..<w {
-      for channel in 0..<4 {
-        prefix[0] = 0
-        for y in 0..<h {
-          prefix[y + 1] = prefix[y] + Int(src[(y * w + x) * 4 + channel])
-        }
-        for y in 0..<h {
-          let start = max(0, y - radius)
-          let end = min(h - 1, y + radius)
-          dst[(y * w + x) * 4 + channel] = UInt8((prefix[end + 1] - prefix[start]) / (end - start + 1))
-        }
-      }
-    }
+    ade_box_blur_rgba(pixels, temp, Int32(w), Int32(h), Int32(radius))
   }
 
   private func composite(_ src: UnsafePointer<UInt8>, _ dst: UnsafeMutablePointer<UInt8>, _ pixels: Int) {
@@ -254,4 +210,111 @@ private final class Cache: @unchecked Sendable {
     width = 0
     height = 0
   }
+}
+
+/// Ordered ink, one image per frame. The formula matches the 0.4.5 lattice.
+enum PaperInkGrain {
+  static func image(
+    size: CGSize, time: Double, energy: Double, night: Bool, red: CGFloat, green: CGFloat,
+    blue: CGFloat
+  ) -> CGImage? {
+    SceneGrain.shared.image(
+      size: size, time: time, energy: energy, night: night, red: red, green: green, blue: blue)
+  }
+}
+
+enum PaperAccentGrain {
+  static func image(size: CGSize, time: Double, night: Bool) -> CGImage? {
+    AccentGrain.shared.image(size: size, time: time, night: night)
+  }
+}
+
+private final class SceneGrain: @unchecked Sendable {
+  static let shared = SceneGrain()
+  private let lock = NSLock()
+  private var pixels: UnsafeMutablePointer<UInt8>?
+  private var capacity = 0
+  private var cached: CGImage?
+  private var token = ""
+
+  func image(
+    size: CGSize, time: Double, energy: Double, night: Bool, red: CGFloat, green: CGFloat,
+    blue: CGFloat
+  ) -> CGImage? {
+    lock.lock()
+    defer { lock.unlock() }
+    let longest = max(size.width, size.height)
+    guard longest > 1, size.width > 1, size.height > 1 else { return nil }
+    let fit = min(1, 1440 / longest)
+    let width = max(2, Int((size.width * fit).rounded()))
+    let height = max(2, Int((size.height * fit).rounded()))
+    let key =
+      "\(width)x\(height)|\(Int(time * 30))|\(Int((energy * 100).rounded()))|\(night ? 1 : 0)|\(Int((red * 255).rounded()))|\(Int((green * 255).rounded()))|\(Int((blue * 255).rounded()))"
+    if key == token, let cached { return cached }
+    ensure(width * height * 4)
+    guard let pixels else { return nil }
+    ade_scene_grain(
+      pixels, Int32(width), Int32(height), Double(size.width), Double(size.height), time, energy,
+      Double(red), Double(green), Double(blue), Int32(night ? 1 : 0))
+    cached = raster(pixels, width, height)
+    token = key
+    return cached
+  }
+
+  private func ensure(_ bytes: Int) {
+    guard bytes > capacity else { return }
+    if let pixels { pixels.deinitialize(count: capacity); pixels.deallocate() }
+    let raw = UnsafeMutableRawPointer.allocate(byteCount: bytes, alignment: 16)
+    pixels = raw.bindMemory(to: UInt8.self, capacity: bytes)
+    pixels?.initialize(repeating: 0, count: bytes)
+    capacity = bytes
+  }
+}
+
+private final class AccentGrain: @unchecked Sendable {
+  static let shared = AccentGrain()
+  private let lock = NSLock()
+  private var pixels: UnsafeMutablePointer<UInt8>?
+  private var capacity = 0
+  private var images: [String: CGImage] = [:]
+
+  func image(size: CGSize, time: Double, night: Bool) -> CGImage? {
+    lock.lock()
+    defer { lock.unlock() }
+    guard size.width > 1, size.height > 1 else { return nil }
+    let longest = max(size.width, size.height) * 2
+    let fit = min(1, 720 / longest)
+    let width = max(2, Int((size.width * 2 * fit).rounded()))
+    let height = max(2, Int((size.height * 2 * fit).rounded()))
+    let key = "\(width)x\(height)|\(Int(time * 30))|\(night ? 1 : 0)"
+    if let hit = images[key] { return hit }
+    if images.count > 16 { images.removeAll() }
+    ensure(width * height * 4)
+    guard let pixels else { return nil }
+    ade_accent_grain(
+      pixels, Int32(width), Int32(height), Double(size.width), Double(size.height), time,
+      Int32(night ? 1 : 0))
+    guard let image = raster(pixels, width, height) else { return nil }
+    images[key] = image
+    return image
+  }
+
+  private func ensure(_ bytes: Int) {
+    guard bytes > capacity else { return }
+    if let pixels { pixels.deinitialize(count: capacity); pixels.deallocate() }
+    let raw = UnsafeMutableRawPointer.allocate(byteCount: bytes, alignment: 16)
+    pixels = raw.bindMemory(to: UInt8.self, capacity: bytes)
+    pixels?.initialize(repeating: 0, count: bytes)
+    capacity = bytes
+  }
+}
+
+private func raster(_ pixels: UnsafePointer<UInt8>, _ width: Int, _ height: Int) -> CGImage? {
+  let data = Data(bytes: pixels, count: width * height * 4) as CFData
+  guard let provider = CGDataProvider(data: data) else { return nil }
+  return CGImage(
+    width: width, height: height, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: width * 4,
+    space: CGColorSpaceCreateDeviceRGB(),
+    bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),
+    provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent)
 }

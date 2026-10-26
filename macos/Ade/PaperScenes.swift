@@ -41,17 +41,6 @@ struct SceneInk: View {
   let scene: PaperScene
   let time: Double
 
-  private static let bayer = [
-    0, 48, 12, 60, 3, 51, 15, 63,
-    32, 16, 44, 28, 35, 19, 47, 31,
-    8, 56, 4, 52, 11, 59, 7, 55,
-    40, 24, 36, 20, 43, 27, 39, 23,
-    2, 50, 14, 62, 1, 49, 13, 61,
-    34, 18, 46, 30, 33, 17, 45, 29,
-    10, 58, 6, 54, 9, 57, 5, 53,
-    42, 26, 38, 22, 41, 25, 37, 21,
-  ]
-
   var body: some View {
     let color = Enki.atmosphere
     let night = Enki.isNight
@@ -61,7 +50,6 @@ struct SceneInk: View {
     let blue = CGFloat(resolved.blue)
     return Canvas(opaque: false, rendersAsynchronously: true) { context, size in
       guard size.width > 0, size.height > 0 else { return }
-      let phase = time * .pi * 2
       let calm = scene == .documents || scene == .rules || scene == .settings
       let energy = calm ? 0.75 : 1.0
       let bounds = Path(CGRect(origin: .zero, size: size))
@@ -85,34 +73,13 @@ struct SceneInk: View {
         context.draw(
           Image(decorative: field, scale: 1), in: CGRect(origin: .zero, size: size))
       }
-      // A fixed Bayer lattice makes the water read as printed ink. Only its coverage
-      // changes with the same currents as the glass; cells never jump or randomize.
-      // Batch the marks into one draw and bound their count on large displays.
-      let spacing = max(4.0, sqrt(size.width * size.height / 42_000))
-      var grain = Path()
-      let drift = 0.09 * sin(phase / 10)
-      for column in 0...Int(size.width / spacing) {
-        let x = (Double(column) + 0.5) * spacing
-        let u = (x / size.width + 0.08) / 1.16
-        let swell = 0.065 * sin(u * .pi * 2 - phase / 12)
-          + 0.035 * sin(u * .pi * 3 + phase / 20)
-        let crest = 0.62 + energy * (swell + drift)
-        let firstRow = max(0, Int((crest - 0.18) * size.height / spacing) - 1)
-        for row in firstRow...Int(size.height / spacing) {
-          let y = (Double(row) + 0.5) * spacing
-          let depth = y / size.height - crest
-          let rise = min(1.0, max(0.0, (depth + 0.18) / 0.46))
-          let density = rise * rise * (3 - 2 * rise) * 0.82 * energy
-          let threshold = (Double(Self.bayer[(row & 7) * 8 + (column & 7)]) + 0.5) / 64
-          // Smooth coverage across each threshold avoids binary popping or flicker.
-          let coverage = min(1.0, max(0.0, (density - threshold) * 7 + 0.5))
-            * min(1.0, density * 12)
-          guard coverage > 0.005 else { continue }
-          let side = spacing * 0.56 * sqrt(coverage)
-          grain.addRect(CGRect(x: x - side / 2, y: y - side / 2, width: side, height: side))
-        }
+      // Same Bayer lattice as 0.4.5, drawn as one image. A path of ~10,000 rects
+      // was rebuilt on every frame; the coverage formula is unchanged.
+      if let grain = PaperInkGrain.image(
+        size: size, time: time, energy: energy, night: night, red: red, green: green, blue: blue)
+      {
+        context.draw(Image(decorative: grain, scale: 1), in: CGRect(origin: .zero, size: size))
       }
-      context.fill(grain, with: .color(color.opacity(night ? 0.46 : 0.60)))
 
       // A restrained surface sheen, shared across all content instead of glass boxes per row.
       context.fill(bounds, with: .linearGradient(

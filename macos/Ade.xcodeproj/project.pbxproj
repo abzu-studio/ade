@@ -33,6 +33,7 @@
 		B7F73AF7AD28B19C45D20CAA /* Resources in Resources */ = {isa = PBXBuildFile; fileRef = 2F945C8D382325B65B57396A /* Resources */; };
 		CADC249AB1132AC00E4A3AF5 /* PaperScenes.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9F2A20D360DA9D6720E598D /* PaperScenes.swift */; };
 		D4F9B02C5A3E7B81902C1F22 /* PaperWaveField.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3E8A91B4F2D6A70891B0E11 /* PaperWaveField.swift */; };
+		F8B2D5E93C0167A24B8D9F51 /* PaperFieldKernels.c in Sources */ = {isa = PBXBuildFile; fileRef = E7A1C4D82B9056F13A7C8E40 /* PaperFieldKernels.c */; };
 		DDCD3A0E61B0F85CD30B3770 /* PaperMotion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41A3840A4B698C3B361674C6 /* PaperMotion.swift */; };
 /* End PBXBuildFile section */
 
@@ -70,6 +71,7 @@
 		89B987BA8BDC456F8102FD80 /* CatalogViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogViews.swift; sourceTree = "<group>"; };
 		B9F2A20D360DA9D6720E598D /* PaperScenes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaperScenes.swift; sourceTree = "<group>"; };
 		C3E8A91B4F2D6A70891B0E11 /* PaperWaveField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaperWaveField.swift; sourceTree = "<group>"; };
+		E7A1C4D82B9056F13A7C8E40 /* PaperFieldKernels.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = PaperFieldKernels.c; sourceTree = "<group>"; };
 		BBCBC572339094540EA68821 /* DocumentViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentViews.swift; sourceTree = "<group>"; };
 		BE2B1F127FC7E0890CA1FCD6 /* WelcomeExperience.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeExperience.swift; sourceTree = "<group>"; };
 		E2ABA67861C75F71A4BF3632 /* UtilityViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UtilityViews.swift; sourceTree = "<group>"; };
@@ -119,6 +121,7 @@
 				41A3840A4B698C3B361674C6 /* PaperMotion.swift */,
 				B9F2A20D360DA9D6720E598D /* PaperScenes.swift */,
 				C3E8A91B4F2D6A70891B0E11 /* PaperWaveField.swift */,
+				E7A1C4D82B9056F13A7C8E40 /* PaperFieldKernels.c */,
 				581FDEF97277A161C4A118D6 /* PersonParticipationView.swift */,
 				214929FFFDFF494895428397 /* QuickOpen.swift */,
 				70A2919833DE9EE4D62F9490 /* ReportHistoryViews.swift */,
@@ -258,6 +261,7 @@
 				DDCD3A0E61B0F85CD30B3770 /* PaperMotion.swift in Sources */,
 				CADC249AB1132AC00E4A3AF5 /* PaperScenes.swift in Sources */,
 				D4F9B02C5A3E7B81902C1F22 /* PaperWaveField.swift in Sources */,
+				F8B2D5E93C0167A24B8D9F51 /* PaperFieldKernels.c in Sources */,
 				95B20FEC3E85D9DC50055C4D /* PersonParticipationView.swift in Sources */,
 				19F37283A25763E50EFE9A57 /* QuickOpen.swift in Sources */,
 				ACF02675E83511F463B6C77F /* ReportHistoryViews.swift in Sources */,
@@ -317,7 +321,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 20;
+				CURRENT_PROJECT_VERSION = 21;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -338,7 +342,7 @@
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.4.6;
+				MARKETING_VERSION = 0.4.7;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -386,7 +390,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 20;
+				CURRENT_PROJECT_VERSION = 21;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = NO;
@@ -413,7 +417,7 @@
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.4.6;
+				MARKETING_VERSION = 0.4.7;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -438,6 +442,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.ade.mac;
 				PRODUCT_NAME = Ade;
 				SDKROOT = macosx;
+				SWIFT_OBJC_BRIDGING_HEADER = Ade/Ade-Bridging-Header.h;
 			};
 			name = Release;
 		};
@@ -454,6 +459,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.ade.mac;
 				PRODUCT_NAME = Ade;
 				SDKROOT = macosx;
+				SWIFT_OBJC_BRIDGING_HEADER = Ade/Ade-Bridging-Header.h;
 			};
 			name = Debug;
 		};

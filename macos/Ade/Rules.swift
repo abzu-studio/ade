@@ -54,6 +54,16 @@ struct Suggestion: Identifiable {
   var score: Int { completed * 3 + present }
 }
 
+private enum RevisionStamps {
+  static let lock = NSLock()
+  static let fractional: ISO8601DateFormatter = {
+    let format = ISO8601DateFormatter()
+    format.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+    return format
+  }()
+  static let basic = ISO8601DateFormatter()
+}
+
 enum Rules {
   static func unique(_ values: [String], _ message: String) throws {
     try require(Set(values).count == values.count, message)
@@ -227,11 +237,12 @@ enum Rules {
         try identifier(r.id)
         try title(r.author)
         try title(r.label)
-        let format = ISO8601DateFormatter()
-        format.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        try require(
-          format.date(from: r.timestamp) != nil
-            || ISO8601DateFormatter().date(from: r.timestamp) != nil, "Fecha de revisión inválida")
+        RevisionStamps.lock.lock()
+        let stamped =
+          RevisionStamps.fractional.date(from: r.timestamp) != nil
+          || RevisionStamps.basic.date(from: r.timestamp) != nil
+        RevisionStamps.lock.unlock()
+        try require(stamped, "Fecha de revisión inválida")
         try require(r.data.id == b.id, "Revisión de otro espacio")
         try unique(r.parents, "Padres duplicados")
         try require(
@@ -307,21 +318,45 @@ enum Rules {
     return rows
   }
   static func suggestions(_ s: Space, event: Activity) -> [Suggestion] {
-    let previous = s.events.filter {
-      $0.id != event.id && $0.date + "T" + $0.time < event.date + "T" + event.time && $0.canRecord
+    let cutoff = event.date + "T" + event.time
+    var previous: [Activity] = []
+    previous.reserveCapacity(s.events.count)
+    for item in s.events
+    where item.id != event.id && item.canRecord && item.date + "T" + item.time < cutoff {
+      previous.append(item)
     }
+    var completedEvents: [String: Set<String>] = [:]
+    for record in s.volunteers where record.status == .completed {
+      completedEvents[record.personId, default: []].insert(record.eventId)
+    }
+    var roster: [String: Set<String>] = [:]
+    for item in previous where item.countsForAttendance {
+      roster[item.id] = Set(item.participantIds)
+    }
+    var seenRecord = Set<String>()
+    var firstPresent = Set<String>()
+    seenRecord.reserveCapacity(s.attendance.count)
+    for record in s.attendance {
+      let key = record.personId + "/" + record.eventId
+      if seenRecord.insert(key).inserted, record.status == .present { firstPresent.insert(key) }
+    }
+    var people: [String: Person] = [:]
+    people.reserveCapacity(s.people.count)
+    for person in s.people where people[person.id] == nil { people[person.id] = person }
     return s.volunteers.filter { $0.eventId == event.id && $0.status == .interested }.compactMap {
       v in
-      guard let p = s.person(v.personId) else { return nil }
-      let completed = previous.filter { e in
-        s.volunteers.contains {
-          $0.eventId == e.id && $0.personId == p.id && $0.status == .completed
+      guard let p = people[v.personId] else { return nil }
+      let done = completedEvents[p.id] ?? []
+      var completed = 0
+      var present = 0
+      for item in previous {
+        if done.contains(item.id) { completed += 1 }
+        if item.countsForAttendance, roster[item.id]?.contains(p.id) == true,
+          firstPresent.contains(p.id + "/" + item.id)
+        {
+          present += 1
         }
-      }.count
-      let present = previous.filter { e in
-        e.countsForAttendance && e.participantIds.contains(p.id)
-          && s.record(e.id, p.id)?.status == .present
-      }.count
+      }
       return Suggestion(
         id: p.id, name: p.name, active: p.active, completed: completed, present: present)
     }.sorted { a, b in
@@ -523,8 +558,39 @@ enum Rules {
 }
 
 extension Rules {
+  /// One event, no other scope: same counts as the full index, without walking every person.
+  private static func eventTotal(_ space: Space, _ eventId: String) -> Participation {
+    guard let event = space.events.first(where: { $0.id == eventId }) else { return Participation() }
+    var known = Set<String>()
+    known.reserveCapacity(space.people.count)
+    for person in space.people { known.insert(person.id) }
+    var status: [String: AttendanceStatus] = [:]
+    for record in space.attendance where record.eventId == eventId {
+      status[record.personId] = record.status
+    }
+    var total = Participation()
+    let counted = event.canRecord && event.countsForAttendance
+    for id in event.participantIds where known.contains(id) {
+      if !counted {
+        total.excluded += 1
+        continue
+      }
+      switch status[id] ?? .pending {
+      case .present: total.present += 1
+      case .absent: total.absent += 1
+      case .excused: total.excused += 1
+      case .pending: total.pending += 1
+      }
+    }
+    return total
+  }
   /// Aggregate records, not an average of per-person percentages.
   static func aggregate(_ space: Space, filter: ReportFilter = .init()) throws -> Participation {
+    if !filter.eventId.isEmpty && filter.periodId.isEmpty && filter.groupId.isEmpty
+      && filter.componentId.isEmpty && filter.categoryId.isEmpty && !filter.uncategorized
+    {
+      return eventTotal(space, filter.eventId)
+    }
     var total = Participation()
     for r in try report(space, filter: filter).values {
       total.present += r.present

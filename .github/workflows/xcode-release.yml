@@ -30,25 +30,25 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test -s dist/preview/Ade-0.4.6-20-unsigned.dmg
-          git archive --format=zip --prefix=Ade-0.4.6/ -o dist/preview/Ade-0.4.6-source.zip "$GITHUB_SHA" \
+          test -s dist/preview/Ade-0.4.7-21-unsigned.dmg
+          git archive --format=zip --prefix=Ade-0.4.7/ -o dist/preview/Ade-0.4.7-source.zip "$GITHUB_SHA" \
             macos native-tests scripts/test-native.sh scripts/test-ui.sh scripts/package-mac.py scripts/audit-source.py \
             scripts/generate-opening-sound.py scripts/verify-toolchain.sh docs/BUILD-XCODE.md docs/ARCHITECTURE-XCODE.md \
-            docs/RULES-XCODE.md docs/DISTRIBUTION.md docs/RELEASE-0.4.6.md \
+            docs/RULES-XCODE.md docs/DISTRIBUTION.md docs/RELEASE-0.4.7.md \
             LICENSE PRIVACY.md THIRD_PARTY_NOTICES.md .gitignore
-          printf 'Adê 0.4.6 (20)\nCommit: %s\nBuild: https://github.com/%s/actions/runs/%s\nSigning: ad hoc, not Apple notarized\n' \
+          printf 'Adê 0.4.7 (21)\nCommit: %s\nBuild: https://github.com/%s/actions/runs/%s\nSigning: ad hoc, not Apple notarized\n' \
             "$GITHUB_SHA" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" > dist/preview/BUILD.txt
           xcodebuild -version >> dist/preview/BUILD.txt
           xcrun swift --version >> dist/preview/BUILD.txt
-          cp docs/RELEASE-0.4.6.md dist/preview/RELEASE.md
+          cp docs/RELEASE-0.4.7.md dist/preview/RELEASE.md
           cd dist/preview
-          shasum -a 256 Ade-0.4.6-20-unsigned.dmg Ade-0.4.6-source.zip > SHA256SUMS.txt
+          shasum -a 256 Ade-0.4.7-21-unsigned.dmg Ade-0.4.7-source.zip > SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: xcode-release-045
+          name: xcode-release-047
           path: |
-            dist/preview/Ade-0.4.6-20-unsigned.dmg
-            dist/preview/Ade-0.4.6-source.zip
+            dist/preview/Ade-0.4.7-21-unsigned.dmg
+            dist/preview/Ade-0.4.7-source.zip
             dist/preview/SHA256SUMS.txt
             dist/preview/BUILD.txt
             dist/preview/RELEASE.md
@@ -63,9 +63,9 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: xcode-release-045
+          name: xcode-release-047
           path: release
-      - name: Verify downloads and publish Adê 0.4.6
+      - name: Verify downloads and publish Adê 0.4.7
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
@@ -73,15 +73,15 @@ jobs:
           set -euo pipefail
           cd release
           sha256sum --check SHA256SUMS.txt
-          # 0.4.6 may already be published from the release commit. Do not move that tag.
-          if gh release view v0.4.6 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            echo "v0.4.6 already exists; leaving the tag in place."
+          # 0.4.7 may already be published from the release commit. Do not move that tag.
+          if gh release view v0.4.7 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "v0.4.7 already exists; leaving the tag in place."
             exit 0
           fi
-          gh release create v0.4.6 --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
-            --draft --title 'Adê 0.4.6 — macOS · SwiftUI/Xcode' --notes-file RELEASE.md \
-            Ade-0.4.6-20-unsigned.dmg Ade-0.4.6-source.zip SHA256SUMS.txt BUILD.txt
-          release_id="$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" --jq '.[] | select(.tag_name == "v0.4.6") | .id')"
+          gh release create v0.4.7 --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            --draft --title 'Adê 0.4.7 — macOS · SwiftUI/Xcode' --notes-file RELEASE.md \
+            Ade-0.4.7-21-unsigned.dmg Ade-0.4.7-source.zip SHA256SUMS.txt BUILD.txt
+          release_id="$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" --jq '.[] | select(.tag_name == "v0.4.7") | .id')"
           test -n "$release_id"
           gh api "repos/$GITHUB_REPOSITORY/releases/$release_id" > release.json
           python3 - <<'PY'
@@ -89,12 +89,12 @@ jobs:
           r = json.load(open('release.json'))
           assert r['draft'] and r['target_commitish'] == os.environ['GITHUB_SHA']
           assets = {a['name']: a for a in r['assets']}
-          expected = {'Ade-0.4.6-20-unsigned.dmg', 'Ade-0.4.6-source.zip', 'SHA256SUMS.txt', 'BUILD.txt'}
+          expected = {'Ade-0.4.7-21-unsigned.dmg', 'Ade-0.4.7-source.zip', 'SHA256SUMS.txt', 'BUILD.txt'}
           assert set(assets) == expected
           for name in expected:
               payload = pathlib.Path(name).read_bytes()
               assert assets[name]['size'] == len(payload)
               assert assets[name]['digest'] == 'sha256:' + hashlib.sha256(payload).hexdigest()
           PY
-          gh release edit v0.4.6 --repo "$GITHUB_REPOSITORY" --draft=false --prerelease=false --latest
-          test "$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq .tag_name)" = v0.4.6
+          gh release edit v0.4.7 --repo "$GITHUB_REPOSITORY" --draft=false --prerelease=false --latest
+          test "$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq .tag_name)" = v0.4.7

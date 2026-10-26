@@ -253,6 +253,26 @@ struct PaperInput<Content: View>: View {
   }
 }
 
+private enum MonthTitle {
+  private static let lock = NSLock()
+  private static var localeID = ""
+  private static let formatter: DateFormatter = {
+    let format = DateFormatter()
+    format.dateFormat = "LLLL yyyy"
+    return format
+  }()
+  static func format(_ date: Date, locale: Locale, timeZone: TimeZone) -> String {
+    lock.lock()
+    defer { lock.unlock() }
+    if localeID != locale.identifier {
+      formatter.locale = locale
+      formatter.timeZone = timeZone
+      localeID = locale.identifier
+    }
+    return formatter.string(from: date)
+  }
+}
+
 struct PaperCalendar: View {
   @Binding var value: String
   var close: () -> Void
@@ -271,11 +291,7 @@ struct PaperCalendar: View {
     _month = State(initialValue: Day.date(value.wrappedValue) ?? Date())
   }
   private var monthTitle: String {
-    let formatter = DateFormatter()
-    formatter.locale = locale
-    formatter.timeZone = calendar.timeZone
-    formatter.dateFormat = "LLLL yyyy"
-    return formatter.string(from: month)
+    MonthTitle.format(month, locale: locale, timeZone: calendar.timeZone)
   }
   private var first: Date {
     calendar.date(from: calendar.dateComponents([.year, .month], from: month))!
@@ -304,7 +320,7 @@ struct PaperCalendar: View {
         }
         ForEach(0..<(offset + count), id: \.self) { cell in
           if cell < offset {
-            Color.clear.frame(height: 30).accessibilityHidden(true)
+            Color.clear.frame(height: 34).accessibilityHidden(true)
           } else {
             let day = cell - offset + 1
             let date = calendar.date(byAdding: .day, value: day - 1, to: first)!
@@ -314,7 +330,7 @@ struct PaperCalendar: View {
               close()
             } label: {
               Text(String(day)).font(.custom(Enki.mono, size: 12)).frame(maxWidth: .infinity).frame(
-                height: 30
+                height: 34
               )
               .background(value == key ? Enki.accent : Enki.paper)
               .foregroundStyle(value == key ? Enki.paper : Enki.ink)
