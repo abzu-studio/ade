@@ -13,96 +13,12 @@ struct PersonParticipationView: View {
 
   var body: some View {
     VStack(alignment: .leading, spacing: 18) {
-      HStack(alignment: .top) {
-        VStack(alignment: .leading, spacing: 5) {
-          MicroLabel(text: m.t("ASISTENCIA INDIVIDUAL", "INDIVIDUAL ATTENDANCE"))
-          Text(m.space?.person(personID)?.name ?? "—")
-            .font(.custom(Enki.display, size: 36)).foregroundStyle(Enki.accent)
-          if m.space?.person(personID)?.active == false {
-            Text(
-              m.t("Persona inactiva · historial conservado", "Inactive person · history preserved")
-            )
-            .font(.caption)
-          }
-        }
-        Spacer()
-        Button(m.t("Exportar CSV…", "Export CSV…")) { export() }
-          .disabled(slices == nil).accessibilityIdentifier("person-report-export")
-        Button(m.t("Cerrar", "Close")) { dismiss() }
-          .keyboardShortcut(.cancelAction).accessibilityIdentifier("person-report-close")
-      }
+      header
       if let space = m.space {
-        HStack(spacing: 22) {
-          PaperPicker(
-            m.t("Período", "Period"), selection: $period,
-            options: [PaperOption("", m.t("Todo el historial", "All history"))]
-              + space.periods.map { PaperOption($0.id, $0.name) }
-          )
-          .accessibilityIdentifier("person-report-period")
-          PaperPicker(
-            m.t("Grupo en la fecha del evento", "Group on event date"), selection: $group,
-            options: [PaperOption("", m.t("Todos", "All"))]
-              + space.groups.map { PaperOption($0.id, $0.name) })
-          PaperPicker(
-            m.t("Desglose", "Breakdown"), selection: $component,
-            options: [PaperOption("", m.t("Todos los componentes", "All components"))]
-              + space.components.map { PaperOption($0.id, $0.name) }
-          )
-          .accessibilityIdentifier("person-report-component")
-        }
+        filters(space)
         if let slices, let total = slices.first {
-          HStack(alignment: .firstTextBaseline, spacing: 26) {
-            Text(total.result.formatted).font(.custom(Enki.display, size: 64))
-              .foregroundStyle(Enki.accent).accessibilityIdentifier("person-report-total")
-            VStack(alignment: .leading, spacing: 5) {
-              Text(m.t("GENERAL · PERÍODO Y GRUPO ELEGIDOS", "OVERALL · SELECTED PERIOD AND GROUP"))
-                .font(.custom(Enki.mono, size: 10))
-              Text(formula(total.result)).font(.custom(Enki.mono, size: 12))
-              Text(
-                m.t(
-                  "El desglose no cambia este total.", "The breakdown does not change this total.")
-              )
-              .font(.caption).foregroundStyle(.secondary)
-            }
-            Spacer()
-          }
-          ScrollView {
-            LazyVStack(alignment: .leading, spacing: 0) {
-              HStack {
-                MicroLabel(text: m.t("Componente / categoría", "Component / category"))
-                Spacer()
-                Text(m.t("P / (P + A)", "P / (P + A)")).font(.custom(Enki.mono, size: 10)).frame(
-                  width: 160)
-                Text("%").font(.custom(Enki.mono, size: 10)).frame(width: 90)
-              }.padding(.vertical, 10)
-              ForEach(
-                slices.filter {
-                  $0.kind != .overall && (component.isEmpty || $0.componentId == component)
-                }
-              ) { row in
-                HStack {
-                  VStack(alignment: .leading, spacing: 4) {
-                    Text(label(row)).font(
-                      .custom(
-                        row.kind == .component ? Enki.condensed : "Inter-Regular",
-                        size: row.kind == .component ? 23 : 13))
-                    Text(
-                      m.t("Excusados", "Excused") + " \(row.result.excused) · "
-                        + m.t("Pendientes", "Pending") + " \(row.result.pending) · "
-                        + m.t("Excluidos", "Excluded") + " \(row.result.excluded)"
-                    )
-                    .font(.custom(Enki.mono, size: 9)).foregroundStyle(.secondary)
-                  }.padding(.leading, row.kind == .component ? 0 : 24)
-                  Spacer()
-                  Text(formula(row.result)).font(.custom(Enki.mono, size: 12)).frame(width: 160)
-                  Text(row.result.formatted).font(.custom(Enki.condensed, size: 26))
-                    .foregroundStyle(Enki.accent).frame(width: 90)
-                    .accessibilityIdentifier("person-report-" + row.id)
-                }.padding(.vertical, row.kind == .component ? 16 : 11)
-                PaperRule(strong: row.kind == .component)
-              }
-            }
-          }.frame(maxWidth: .infinity, maxHeight: .infinity)
+          summary(total)
+          breakdown(slices)
         } else {
           Text(
             m.t(
@@ -136,6 +52,107 @@ struct PersonParticipationView: View {
         Text(error ?? "")
       }
   }
+
+  private var header: some View {
+    HStack(alignment: .top) {
+      VStack(alignment: .leading, spacing: 5) {
+        MicroLabel(text: m.t("ASISTENCIA INDIVIDUAL", "INDIVIDUAL ATTENDANCE"))
+        Text(m.space?.person(personID)?.name ?? "—")
+          .font(.custom(Enki.display, size: 36)).foregroundStyle(Enki.accent)
+        if m.space?.person(personID)?.active == false {
+          Text(
+            m.t("Persona inactiva · historial conservado", "Inactive person · history preserved")
+          )
+          .font(.caption)
+        }
+      }
+      Spacer()
+      Button(m.t("Exportar CSV…", "Export CSV…")) { export() }
+        .disabled(slices == nil).accessibilityIdentifier("person-report-export")
+      Button(m.t("Cerrar", "Close")) { dismiss() }
+        .keyboardShortcut(.cancelAction).accessibilityIdentifier("person-report-close")
+    }
+  }
+
+  private func filters(_ space: Space) -> some View {
+    HStack(spacing: 22) {
+      PaperPicker(
+        m.t("Período", "Period"), selection: $period,
+        options: [PaperOption("", m.t("Todo el historial", "All history"))]
+          + space.periods.map { PaperOption($0.id, $0.name) }
+      )
+      .accessibilityIdentifier("person-report-period")
+      PaperPicker(
+        m.t("Grupo en la fecha del evento", "Group on event date"), selection: $group,
+        options: [PaperOption("", m.t("Todos", "All"))]
+          + space.groups.map { PaperOption($0.id, $0.name) })
+      PaperPicker(
+        m.t("Desglose", "Breakdown"), selection: $component,
+        options: [PaperOption("", m.t("Todos los componentes", "All components"))]
+          + space.components.map { PaperOption($0.id, $0.name) }
+      )
+      .accessibilityIdentifier("person-report-component")
+    }
+  }
+
+  private func summary(_ total: ParticipationSlice) -> some View {
+    HStack(alignment: .firstTextBaseline, spacing: 26) {
+      Text(total.result.formatted).font(.custom(Enki.display, size: 64))
+        .foregroundStyle(Enki.accent).accessibilityIdentifier("person-report-total")
+      VStack(alignment: .leading, spacing: 5) {
+        Text(m.t("GENERAL · PERÍODO Y GRUPO ELEGIDOS", "OVERALL · SELECTED PERIOD AND GROUP"))
+          .font(.custom(Enki.mono, size: 10))
+        Text(formula(total.result)).font(.custom(Enki.mono, size: 12))
+        Text(
+          m.t(
+            "El desglose no cambia este total.", "The breakdown does not change this total.")
+        )
+        .font(.caption).foregroundStyle(.secondary)
+      }
+      Spacer()
+    }
+  }
+
+  private func breakdown(_ slices: [ParticipationSlice]) -> some View {
+    ScrollView {
+      LazyVStack(alignment: .leading, spacing: 0) {
+        HStack {
+          MicroLabel(text: m.t("Componente / categoría", "Component / category"))
+          Spacer()
+          Text(m.t("P / (P + A)", "P / (P + A)")).font(.custom(Enki.mono, size: 10)).frame(
+            width: 160)
+          Text("%").font(.custom(Enki.mono, size: 10)).frame(width: 90)
+        }.padding(.vertical, 10)
+        ForEach(
+          slices.filter {
+            $0.kind != .overall && (component.isEmpty || $0.componentId == component)
+          }
+        ) { row in
+          HStack {
+            VStack(alignment: .leading, spacing: 4) {
+              Text(label(row)).font(
+                .custom(
+                  row.kind == .component ? Enki.condensed : "Inter-Regular",
+                  size: row.kind == .component ? 23 : 13))
+              Text(
+                m.t("Excusados", "Excused") + " \(row.result.excused) · "
+                  + m.t("Pendientes", "Pending") + " \(row.result.pending) · "
+                  + m.t("Excluidos", "Excluded") + " \(row.result.excluded)"
+              )
+              .font(.custom(Enki.mono, size: 9)).foregroundStyle(.secondary)
+            }.padding(.leading, row.kind == .component ? 0 : 24)
+            Spacer()
+            Text(formula(row.result)).font(.custom(Enki.mono, size: 12)).frame(width: 160)
+            Text(row.result.formatted).font(.custom(Enki.condensed, size: 26))
+              .foregroundStyle(Enki.accent).frame(width: 90)
+              .accessibilityIdentifier("person-report-" + row.id)
+          }.padding(.vertical, row.kind == .component ? 16 : 11)
+          PaperRule(strong: row.kind == .component)
+        }
+      }
+    }.frame(maxWidth: .infinity, maxHeight: .infinity)
+  }
+
   private var slices: [ParticipationSlice]? {
     guard let space = m.space else { return nil }
     return try? Rules.participationBreakdown(space, person: personID, period: period, group: group)
