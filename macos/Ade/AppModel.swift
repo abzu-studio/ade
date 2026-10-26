@@ -333,7 +333,7 @@ import UniformTypeIdentifiers
   func volunteerSuggestions(for event: Activity) -> [Suggestion] {
     ensureReadIndex()
     if let hit = suggestionCache[event.id] { return hit }
-    let value = branch?.visible?.data.map { Rules.suggestions($0, event: event) } ?? []
+    let value = branch?.visible.map { Rules.suggestions($0.data, event: event) } ?? []
     if readReady { suggestionCache[event.id] = value }
     return value
   }
