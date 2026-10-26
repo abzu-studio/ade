@@ -77,7 +77,10 @@ jobs:
           gh release create v0.4.5 --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
             --draft --title 'Adê 0.4.5 — macOS · SwiftUI/Xcode' --notes-file RELEASE.md \
             Ade-0.4.5-19-unsigned.dmg Ade-0.4.5-source.zip SHA256SUMS.txt BUILD.txt
-          gh api "repos/$GITHUB_REPOSITORY/releases/tags/v0.4.5" > release.json
+          # Draft releases have no public tag endpoint yet; resolve their database ID.
+          release_id="$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" --jq '.[] | select(.tag_name == "v0.4.5") | .id')"
+          test -n "$release_id"
+          gh api "repos/$GITHUB_REPOSITORY/releases/$release_id" > release.json
           python3 - <<'PY'
           import hashlib, json, os, pathlib
           r = json.load(open('release.json'))
