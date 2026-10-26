@@ -194,9 +194,57 @@ func capturePreviews(to directory: String) {
     report.append("februaryOk=\(februaryOk)")
     report.append("peopleOk=\(peopleOk)")
     report.append("shots=\(missing.isEmpty ? "ok" : missing.joined(separator: ","))")
+    let proofOk = februaryOk && peopleOk && missing.isEmpty
+    if proofOk {
+        recordMotion(store, folder: folder, spaceId: space.id, eventId: event.id, missing: &missing)
+    }
+    report.append("motion=\(missing.isEmpty ? "ok" : missing.joined(separator: ","))")
     try? report.joined(separator: "\n").write(to: folder.appendingPathComponent("attendance-check.txt"), atomically: true, encoding: .utf8)
     print(report.joined(separator: "\n"))
-    exit(februaryOk && peopleOk && missing.isEmpty ? 0 : 1)
+    exit(proofOk && missing.isEmpty ? 0 : 1)
+}
+
+/// Extra window captures for the repo page. Runs only after februaryOk and peopleOk
+/// are already decided, so changing February attendance cannot rewrite that proof.
+@MainActor
+private func recordMotion(_ store: AdeStore, folder: URL, spaceId: String, eventId: String, missing: inout [String]) {
+    func frame(_ name: String) {
+        let url = folder.appendingPathComponent(name)
+        guard let image = renderShot(store), writePNG(image, url),
+              let data = try? Data(contentsOf: url), data.count >= 12_000 else {
+            missing.append(name)
+            return
+        }
+        let score = clayScore(image)
+        print(String(format: "motion %@ bytes=%d paper=%.2f yellow=%.2f", name, data.count, score.paperFraction, score.yellowFraction))
+        if !score.ok {
+            missing.append("\(name):not-ui")
+        }
+    }
+
+    store.goHome()
+    frame("motion-01-spaces.png")
+    store.open(spaceId)
+    frame("motion-02-overview.png")
+    store.go(.people)
+    frame("motion-03-people.png")
+    store.go(.events)
+    store.eventId = eventId
+    frame("motion-04-february.png")
+    if let ben = store.database.people.first(where: { $0.spaceId == spaceId && $0.name == "Ben" }) {
+        store.perform(.setAttendance(spaceId: spaceId, eventId: eventId, personId: ben.id, state: .present, note: ""), announce: .none)
+    } else {
+        missing.append("motion-ben-missing")
+    }
+    frame("motion-05-ben-present.png")
+    store.go(.participation)
+    frame("motion-06-participation.png")
+    store.perform(.setLocale(.es), announce: .none)
+    store.go(.events)
+    store.eventId = eventId
+    frame("motion-07-spanish.png")
+    store.go(.rules)
+    frame("motion-08-rules.png")
 }
 
 @MainActor
