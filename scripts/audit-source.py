@@ -10,9 +10,9 @@ def git(*args):
     return subprocess.check_output(['git', '-C', str(root), *args])
 
 files = git('ls-files', '-z').decode().split('\0')
-allowed_roots = {'macos', 'native-tests', 'scripts', 'docs', '.github'}
+allowed_roots = {'macos', 'native-tests', 'scripts', 'docs', '.github', 'Sources', 'Tests'}
 allowed_files = {'.gitignore', 'README.md', 'LICENSE', 'CONTRIBUTING.md',
-                 'PRIVACY.md', 'THIRD_PARTY_NOTICES.md'}
+                 'PRIVACY.md', 'THIRD_PARTY_NOTICES.md', 'Package.swift'}
 blocked_parts = {'xcuserdata', 'build', 'verification', 'DerivedData', '.cursor'}
 blocked_extensions = {'.log', '.zip', '.dmg', '.pkg', '.p12', '.p8', '.key',
                       '.mobileprovision', '.xcuserstate'}

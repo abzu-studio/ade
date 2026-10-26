@@ -1,5 +1,7 @@
 # Distribución
 
+Este proceso corresponde al proyecto Xcode en `macos/` (0.3.2). El Swift Package de `Sources/` (1.0.1) usa `scripts/package-macos-app.sh`, que genera un paquete con firma ad hoc; no produce una distribución notarizada. Ambos destinos mantienen formatos de datos distintos. No intercambies sus archivos de almacenamiento sin una migración explícita.
+
 Versión 0.3.2, compilación 11. Identificador `com.ade.mac`. Destino mínimo: macOS 14.
 
 Antes de distribuir un instalador comercial:

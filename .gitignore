@@ -23,3 +23,8 @@ __pycache__/
 *.pyc
 workspace*.json
 *.log
+
+# Swift Package Manager
+.build/
+.swiftpm/
+*.pem

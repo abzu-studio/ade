@@ -1,0 +1,53 @@
+name: Ade
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  core:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: "6.2"
+      - name: Rule tests
+        run: swift test
+
+  mac:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Package the Mac app
+        run: bash scripts/package-macos-app.sh
+      - name: Launch, render, and check attendance
+        run: |
+          mkdir -p "$RUNNER_TEMP/previews"
+          "dist/Adê.app/Contents/MacOS/Ade" --render-previews "$RUNNER_TEMP/previews"
+          test -s "$RUNNER_TEMP/previews/01-home.png"
+          test -s "$RUNNER_TEMP/previews/02-home-demo.png"
+          test -s "$RUNNER_TEMP/previews/03-overview.png"
+          test -s "$RUNNER_TEMP/previews/04-february-attendance.png"
+          test -s "$RUNNER_TEMP/previews/05-participation.png"
+          grep "februaryOk=true" "$RUNNER_TEMP/previews/attendance-check.txt"
+          grep "peopleOk=true" "$RUNNER_TEMP/previews/attendance-check.txt"
+          if shasum "$RUNNER_TEMP/previews/"0*.png | awk '{print $1}' | sort | uniq -d | grep -q .; then
+            echo "preview images are identical"
+            shasum "$RUNNER_TEMP/previews/"0*.png
+            exit 1
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ade-mac
+          path: |
+            dist/Ade-1.0.1-macOS.zip
+            dist/Adê.app
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ade-previews
+          path: ${{ runner.temp }}/previews
+          if-no-files-found: error
