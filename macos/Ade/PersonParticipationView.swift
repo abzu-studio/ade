@@ -128,29 +128,19 @@ struct PersonParticipationView: View {
             $0.kind != .overall && (component.isEmpty || $0.componentId == component)
           }
         ) { row in
-          HStack {
-            VStack(alignment: .leading, spacing: 4) {
-              Text(label(row)).font(
-                .custom(
-                  row.kind == .component ? Enki.condensed : "Inter-Regular",
-                  size: row.kind == .component ? 23 : 13))
-              Text(
-                m.t("Excusados", "Excused") + " \(row.result.excused) · "
-                  + m.t("Pendientes", "Pending") + " \(row.result.pending) · "
-                  + m.t("Excluidos", "Excluded") + " \(row.result.excluded)"
-              )
-              .font(.custom(Enki.mono, size: 9)).foregroundStyle(.secondary)
-            }.padding(.leading, row.kind == .component ? 0 : 24)
-            Spacer()
-            Text(formula(row.result)).font(.custom(Enki.mono, size: 12)).frame(width: 160)
-            Text(row.result.formatted).font(.custom(Enki.condensed, size: 26))
-              .foregroundStyle(Enki.accent).frame(width: 90)
-              .accessibilityIdentifier("person-report-" + row.id)
-          }.padding(.vertical, row.kind == .component ? 16 : 11)
+          ParticipationReportRow(
+            row: row, title: label(row), details: excludedDetails(row.result))
           PaperRule(strong: row.kind == .component)
         }
       }
     }.frame(maxWidth: .infinity, maxHeight: .infinity)
+  }
+
+  private func excludedDetails(_ result: Participation) -> String {
+    let excused = m.t("Excusados", "Excused") + " \(result.excused)"
+    let pending = m.t("Pendientes", "Pending") + " \(result.pending)"
+    let excluded = m.t("Excluidos", "Excluded") + " \(result.excluded)"
+    return [excused, pending, excluded].joined(separator: " · ")
   }
 
   private var slices: [ParticipationSlice]? {
@@ -188,5 +178,32 @@ struct PersonParticipationView: View {
       try Panels.save(
         Data(csv.utf8), name: "Ade-asistencia-individual.csv", type: .commaSeparatedText)
     } catch { self.error = error.localizedDescription }
+  }
+}
+
+private struct ParticipationReportRow: View {
+  let row: ParticipationSlice
+  let title: String
+  let details: String
+
+  private var isComponent: Bool { row.kind == .component }
+  private var titleSize: CGFloat { isComponent ? 23 : 13 }
+  private var leadingInset: CGFloat { isComponent ? 0 : 24 }
+  private var verticalInset: CGFloat { isComponent ? 16 : 11 }
+
+  var body: some View {
+    HStack {
+      VStack(alignment: .leading, spacing: 4) {
+        Text(title)
+          .font(.custom(isComponent ? Enki.condensed : "Inter-Regular", size: titleSize))
+        Text(details).font(.custom(Enki.mono, size: 9)).foregroundStyle(.secondary)
+      }.padding(.leading, leadingInset)
+      Spacer()
+      Text("\(row.result.present) / (\(row.result.present) + \(row.result.absent))")
+        .font(.custom(Enki.mono, size: 12)).frame(width: 160)
+      Text(row.result.formatted).font(.custom(Enki.condensed, size: 26))
+        .foregroundStyle(Enki.accent).frame(width: 90)
+        .accessibilityIdentifier("person-report-" + row.id)
+    }.padding(.vertical, verticalInset)
   }
 }
