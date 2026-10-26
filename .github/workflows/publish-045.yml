@@ -1,0 +1,48 @@
+name: Publish verified Adê 0.4.5 draft
+on:
+  push:
+    branches: [codex/publish-045]
+    paths: [.github/workflows/publish-045.yml]
+permissions:
+  contents: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify existing draft assets and publish without replacing them
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          release_id="$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" --jq '.[] | select(.tag_name == "v0.4.5") | .id')"
+          test -n "$release_id"
+          gh api "repos/$GITHUB_REPOSITORY/releases/$release_id" > before.json
+          python3 - <<'PY'
+          import json
+          r = json.load(open('before.json'))
+          assert r['tag_name'] == 'v0.4.5' and r['draft']
+          assert r['target_commitish'] == 'bf0693ff6790d3f774a3db0a4cadd0f0762da628'
+          expected = {
+              'Ade-0.4.5-19-unsigned.dmg': 'sha256:d5a8342aca238fee050bc49b10aadecf0b3ce58a04fbe2a1fb4a0d258fefa021',
+              'Ade-0.4.5-source.zip': 'sha256:7f9de13b137df8795f4e4a7c66834741ee849b335c09db9c1e51cbe5b4bc6a44',
+              'BUILD.txt': 'sha256:420c2faace5dc8cff7ed309bf14032fbbd3e3d5008f82b20dc660cbac80e8831',
+              'SHA256SUMS.txt': 'sha256:e2216c25ad1bd1f0691f64c22a3bd0933d89e17422d70aca842c67fdc15d6859',
+          }
+          assert {a['name']: a['digest'] for a in r['assets']} == expected
+          PY
+          gh api --method PATCH "repos/$GITHUB_REPOSITORY/releases/$release_id" \
+            -F draft=false -F prerelease=false -f make_latest=true > after.json
+          python3 - <<'PY'
+          import json
+          before = json.load(open('before.json'))
+          after = json.load(open('after.json'))
+          assert not after['draft'] and not after['prerelease']
+          for field in ('id', 'tag_name', 'target_commitish', 'body'):
+              assert before[field] == after[field], field
+          identity = lambda r: sorted((a['id'], a['name'], a['size'], a['digest']) for a in r['assets'])
+          assert identity(before) == identity(after)
+          print('Published verified release without replacing its assets.')
+          PY
+          test "$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq .tag_name)" = v0.4.5
