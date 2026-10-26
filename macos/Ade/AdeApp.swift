@@ -35,6 +35,10 @@ import SwiftUI
                 .setContentSize(NSSize(width: 1160, height: 720))
             }
           }
+          if let path = ProcessInfo.processInfo.environment["ADE_CAPTURE_WINDOW"] {
+            DayAppearance.shared.theme = .nightGraphite
+            Task { await captureWorkspaceWindow(model: model, to: path) }
+          }
         #endif
       }
       .onChange(of: DayAppearance.shared.theme) { DayAppearance.shared.applyDockIcon() }.tint(
@@ -306,6 +310,61 @@ struct SpaceEditor: View {
     }
   }
 }
+
+#if DEBUG
+@MainActor
+private func captureWorkspaceWindow(model: AppModel, to path: String) async {
+  let deadline = Date().addingTimeInterval(25)
+  func waitIdle() async -> Bool {
+    while Date() < deadline {
+      if !model.loading && !model.busy && model.pending == nil { return true }
+      try? await Task.sleep(for: .milliseconds(40))
+    }
+    return false
+  }
+  guard await waitIdle() else {
+    fputs("capture: workspace did not finish loading\n", stderr)
+    exit(1)
+  }
+  await model.loadDemo()
+  guard await waitIdle(), model.space != nil else {
+    fputs("capture: demo space did not open\n", stderr)
+    exit(1)
+  }
+  model.navigate(.classification)
+  NSApp.setActivationPolicy(.regular)
+  NSApp.activate(ignoringOtherApps: true)
+  guard let window = NSApp.windows.first(where: { $0.identifier?.rawValue == "workspace" })
+    ?? NSApp.keyWindow ?? NSApp.windows.first, let view = window.contentView else {
+    fputs("capture: no window\n", stderr)
+    exit(1)
+  }
+  window.setContentSize(NSSize(width: 1280, height: 720))
+  window.makeKeyAndOrderFront(nil)
+  for _ in 0..<16 {
+    view.layoutSubtreeIfNeeded()
+    view.displayIfNeeded()
+    window.displayIfNeeded()
+    RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.06))
+  }
+  guard let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) else {
+    fputs("capture: no bitmap\n", stderr)
+    exit(1)
+  }
+  view.cacheDisplay(in: view.bounds, to: rep)
+  guard let png = rep.representation(using: .png, properties: [:]), !png.isEmpty else {
+    fputs("capture: empty png\n", stderr)
+    exit(1)
+  }
+  do {
+    try png.write(to: URL(fileURLWithPath: path))
+  } catch {
+    fputs("capture: \(error)\n", stderr)
+    exit(1)
+  }
+  exit(0)
+}
+#endif
 
 @MainActor final class AdeAppDelegate: NSObject, NSApplicationDelegate {
   weak var model: AppModel?

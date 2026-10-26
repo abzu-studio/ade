@@ -39,3 +39,23 @@ jobs:
           path: Ade-*-macos.zip
           if-no-files-found: error
           retention-days: 14
+      - name: Capture the workspace window
+        timeout-minutes: 8
+        run: |
+          set -euo pipefail
+          xcodebuild -project macos/Ade.xcodeproj -scheme Ade \
+            -configuration Debug -derivedDataPath build/CaptureDerived \
+            -destination 'platform=macOS' \
+            CODE_SIGN_IDENTITY=- ONLY_ACTIVE_ARCH=YES build
+          app=build/CaptureDerived/Build/Products/Debug/Ade.app
+          out="${RUNNER_TEMP}/no-border.png"
+          rm -f "$out"
+          ADE_UI_TEST_RUN=noborder ADE_CAPTURE_WINDOW="$out" "$app/Contents/MacOS/Ade"
+          test -s "$out"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ade-no-border
+          path: ${{ runner.temp }}/no-border.png
+          if-no-files-found: warn
+          retention-days: 5
