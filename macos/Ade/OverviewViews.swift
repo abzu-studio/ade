@@ -85,13 +85,26 @@ struct SpacesHomeView: View {
   }
 }
 enum DateLabel {
+  private static let lock = NSLock()
+  private static var formats: [String: DateFormatter] = [:]
   static func short(_ value: String, locale: String, weekday: Bool = false) -> String {
     guard let date = Day.date(value) else { return value }
-    let f = DateFormatter()
-    f.locale = Locale(identifier: locale)
-    f.timeZone = TimeZone(secondsFromGMT: 0)
-    f.dateFormat = weekday ? "EEE dd MMM" : "dd MMM yyyy"
-    return f.string(from: date).replacingOccurrences(of: ".", with: "").uppercased()
+    let key = locale + (weekday ? "|w" : "|d")
+    lock.lock()
+    let format: DateFormatter
+    if let cached = formats[key] {
+      format = cached
+    } else {
+      let created = DateFormatter()
+      created.locale = Locale(identifier: locale)
+      created.timeZone = TimeZone(secondsFromGMT: 0)
+      created.dateFormat = weekday ? "EEE dd MMM" : "dd MMM yyyy"
+      formats[key] = created
+      format = created
+    }
+    let text = format.string(from: date)
+    lock.unlock()
+    return text.replacingOccurrences(of: ".", with: "").uppercased()
   }
 }
 struct OverviewView: View {
@@ -124,24 +137,21 @@ struct OverviewView: View {
             metric(m.t("Eventos", "Events"), String(s.events.count))
             metric(m.t("Documentos", "Documents"), String(s.templates.count), last: true)
           }.padding(16).overlay { Rectangle().stroke(Enki.rule, lineWidth: 0.7) }
+          let upcoming = next(s)
           HStack(alignment: .bottom) {
             VStack(alignment: .leading, spacing: 7) {
               MicroLabel(text: m.t("Siguiente paso", "Next step"))
-              Text(next(s).title.uppercased()).font(.custom(Enki.condensed, size: 24))
-              MicroLabel(text: next(s).detail)
+              Text(upcoming.title.uppercased()).font(.custom(Enki.condensed, size: 24))
+              MicroLabel(text: upcoming.detail)
             }
             Spacer()
-            Button(next(s).action + " →") {
-              let n = next(s)
-              if let event = n.event { m.openEvent(event) } else { m.navigate(n.section) }
+            Button(upcoming.action + " →") {
+              if let event = upcoming.event { m.openEvent(event) } else { m.navigate(upcoming.section) }
             }.buttonStyle(ActionLink())
           }.padding(.top, 8)
         }.padding(30)
       }
     }
-  }
-  private func aggregate(_ s: Space) -> Participation {
-    (try? Rules.aggregate(s)) ?? Participation()
   }
   private func metric(_ label: String, _ value: String, last: Bool = false) -> some View {
     HStack {
@@ -164,7 +174,7 @@ struct OverviewView: View {
     var explanation: String
   }
   private func workflow(_ s: Space) -> some View {
-    let result = aggregate(s)
+    let result = m.participation()
     let eligible = s.events.filter { $0.canRecord && $0.countsForAttendance }
     let listed = eligible.reduce(0) { $0 + $1.participantIds.count }
     let stages = [

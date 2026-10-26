@@ -1,8 +1,8 @@
 # Distribución
 
-Este proceso corresponde al proyecto Xcode en `macos/` (0.4.5). El Swift Package de `Sources/` (1.0.1) usa `scripts/package-macos-app.sh`, que genera un paquete con firma ad hoc; no produce una distribución notarizada. Ambos destinos mantienen formatos de datos distintos. No intercambies sus archivos de almacenamiento sin una migración explícita.
+Este proceso corresponde al proyecto Xcode en `macos/` (0.4.7). El Swift Package de `Sources/` (1.0.1) usa `scripts/package-macos-app.sh`, que genera un paquete con firma ad hoc; no produce una distribución notarizada. Ambos destinos mantienen formatos de datos distintos. No intercambies sus archivos de almacenamiento sin una migración explícita.
 
-Versión 0.4.5, compilación 19. Identificador `com.ade.mac`. Destino mínimo: macOS 14.
+Versión 0.4.7, compilación 21. Identificador `com.ade.mac`. Destino mínimo: macOS 14.
 
 Antes de distribuir un instalador comercial:
 
@@ -19,7 +19,7 @@ Antes de distribuir un instalador comercial:
 python3 scripts/package-mac.py preview
 ```
 
-Genera `dist/preview/Ade-0.4.5-19-unsigned.dmg`, marcado explícitamente como no notarizado. Solo incluye la aplicación, un enlace a Aplicaciones e instrucciones de instalación. El workflow `xcode-release.yml` compila desde el commit publicado, verifica el paquete y adjunta el DMG, código y checksums a una release claramente marcada como no notarizada. No utiliza certificados ni datos de este Mac.
+Genera `dist/preview/Ade-0.4.7-21-unsigned.dmg`, marcado explícitamente como no notarizado. Solo incluye la aplicación, un enlace a Aplicaciones e instrucciones de instalación. El workflow `xcode-release.yml` compila desde el commit publicado, verifica el paquete y adjunta el DMG, código y checksums a una release claramente marcada como no notarizada. No utiliza certificados ni datos de este Mac.
 
 ## Paquete local
 
@@ -27,7 +27,7 @@ Genera `dist/preview/Ade-0.4.5-19-unsigned.dmg`, marcado explícitamente como no
 python3 scripts/package-mac.py local
 ```
 
-Genera `dist/local/Ade-0.4.5-19-local.dmg` y su SHA-256. El disco contiene Adê y un acceso a Aplicaciones. Usa firma ad hoc, no está notarizado y no debe publicarse como instalador comercial. No modifica la aplicación instalada ni su contenedor de datos.
+Genera `dist/local/Ade-0.4.7-21-local.dmg` y su SHA-256. El disco contiene Adê y un acceso a Aplicaciones. Usa firma ad hoc, no está notarizado y no debe publicarse como instalador comercial. No modifica la aplicación instalada ni su contenedor de datos.
 
 El proceso comprueba ambas arquitecturas, la firma, hardened runtime, los permisos del sandbox, las licencias de fuentes y la ausencia de datos o acciones de demostración. Release no permite adjuntar un depurador ni concede acceso a la red.
 

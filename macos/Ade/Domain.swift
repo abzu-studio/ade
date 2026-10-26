@@ -183,29 +183,42 @@ struct Database: Codable, Equatable {
   var spaces: [Branch] = []
 }
 enum Day {
+  private static let lock = NSLock()
+  private static let utc: DateFormatter = {
+    let format = DateFormatter()
+    format.locale = Locale(identifier: "en_US_POSIX")
+    format.timeZone = TimeZone(secondsFromGMT: 0)
+    format.dateFormat = "yyyy-MM-dd"
+    format.isLenient = false
+    return format
+  }()
+  private static let local: DateFormatter = {
+    let format = DateFormatter()
+    format.locale = Locale(identifier: "en_US_POSIX")
+    format.dateFormat = "yyyy-MM-dd"
+    format.isLenient = false
+    return format
+  }()
   static var today: String {
-    let f = DateFormatter()
-    f.locale = Locale(identifier: "en_US_POSIX")
-    f.dateFormat = "yyyy-MM-dd"
-    return f.string(from: Date())
+    lock.lock()
+    defer { lock.unlock() }
+    return local.string(from: Date())
   }
   static func string(_ date: Date) -> String {
-    let f = DateFormatter()
-    f.locale = Locale(identifier: "en_US_POSIX")
-    f.timeZone = TimeZone(secondsFromGMT: 0)
-    f.dateFormat = "yyyy-MM-dd"
-    return f.string(from: date)
+    lock.lock()
+    defer { lock.unlock() }
+    return utc.string(from: date)
   }
   static func date(_ text: String) -> Date? {
-    let f = DateFormatter()
-    f.locale = Locale(identifier: "en_US_POSIX")
-    f.timeZone = TimeZone(secondsFromGMT: 0)
-    f.dateFormat = "yyyy-MM-dd"
-    f.isLenient = false
-    guard text.range(of: #"^\d{4}-\d{2}-\d{2}$"#, options: .regularExpression) != nil,
-      let d = f.date(from: text), string(d) == text
-    else { return nil }
-    return d
+    guard text.range(of: #"^\d{4}-\d{2}-\d{2}$"#, options: .regularExpression) != nil else {
+      return nil
+    }
+    lock.lock()
+    let parsed = utc.date(from: text)
+    let round = parsed.map { utc.string(from: $0) }
+    lock.unlock()
+    guard let parsed, round == text else { return nil }
+    return parsed
   }
 }
 

@@ -251,6 +251,102 @@ import UniformTypeIdentifiers
       try Panels.save(data, name: "Ade-recovered.json", type: .json)
     } catch { self.error = error.localizedDescription }
   }
+
+  @ObservationIgnored private var readRevision = ""
+  @ObservationIgnored private var readReady = false
+  @ObservationIgnored private var peopleByID: [String: Person] = [:]
+  @ObservationIgnored private var attendanceByKey: [String: Attendance] = [:]
+  @ObservationIgnored private var membershipsByPerson: [String: [Membership]] = [:]
+  @ObservationIgnored private var orderedGroups: [Named] = []
+  @ObservationIgnored private var participationCache: [ReportFilter: Participation] = [:]
+  @ObservationIgnored private var suggestionCache: [String: [Suggestion]] = [:]
+  @ObservationIgnored private var groupLabelCache: [String: String] = [:]
+
+  private func ensureReadIndex() {
+    guard let revision = branch?.visible?.id, let data = branch?.visible?.data else {
+      guard readReady else { return }
+      readReady = false
+      readRevision = ""
+      peopleByID = [:]
+      attendanceByKey = [:]
+      membershipsByPerson = [:]
+      orderedGroups = []
+      participationCache = [:]
+      suggestionCache = [:]
+      groupLabelCache = [:]
+      return
+    }
+    if readReady, readRevision == revision { return }
+    readRevision = revision
+    readReady = true
+    var people: [String: Person] = [:]
+    people.reserveCapacity(data.people.count)
+    for person in data.people where people[person.id] == nil { people[person.id] = person }
+    peopleByID = people
+    var attendance: [String: Attendance] = [:]
+    attendance.reserveCapacity(data.attendance.count)
+    for record in data.attendance {
+      let key = record.eventId + "/" + record.personId
+      if attendance[key] == nil { attendance[key] = record }
+    }
+    attendanceByKey = attendance
+    membershipsByPerson = Dictionary(grouping: data.memberships, by: \.personId)
+    orderedGroups = data.groups
+    participationCache = [:]
+    suggestionCache = [:]
+    groupLabelCache = [:]
+  }
+
+  func personRecord(_ id: String) -> Person? {
+    ensureReadIndex()
+    return peopleByID[id]
+  }
+
+  func attendanceRecord(event: String, person: String) -> Attendance? {
+    ensureReadIndex()
+    return attendanceByKey[event + "/" + person]
+  }
+
+  func groupLabel(person: String, on day: String) -> String {
+    ensureReadIndex()
+    let key = person + "\u{1f}" + day
+    if let hit = groupLabelCache[key] { return hit }
+    let memberships = membershipsByPerson[person] ?? []
+    let label = orderedGroups.filter { group in
+      memberships.contains {
+        $0.groupId == group.id && $0.start <= day && ($0.end == nil || $0.end! >= day)
+      }
+    }.map(\.name).joined(separator: ", ")
+    groupLabelCache[key] = label
+    return label
+  }
+
+  func participation(filter: ReportFilter = .init()) -> Participation {
+    ensureReadIndex()
+    if let hit = participationCache[filter] { return hit }
+    let value = (branch?.visible?.data).flatMap { try? Rules.aggregate($0, filter: filter) }
+      ?? Participation()
+    if readReady { participationCache[filter] = value }
+    return value
+  }
+
+  func volunteerSuggestions(for event: Activity) -> [Suggestion] {
+    ensureReadIndex()
+    if let hit = suggestionCache[event.id] { return hit }
+    let value = branch?.visible.map { Rules.suggestions($0.data, event: event) } ?? []
+    if readReady { suggestionCache[event.id] = value }
+    return value
+  }
+
+  func attendanceCounts(for event: Activity) -> [AttendanceStatus: Int] {
+    ensureReadIndex()
+    var counts: [AttendanceStatus: Int] = [:]
+    for id in event.participantIds {
+      let status = attendanceByKey[event.id + "/" + id]?.status ?? .pending
+      counts[status, default: 0] += 1
+    }
+    return counts
+  }
 }
 @MainActor enum Panels {
   static func open(types: [UTType], maxBytes: Int = 10_000_000) throws -> Data? {

@@ -24,3 +24,18 @@ jobs:
           CODE_SIGN_IDENTITY=- ARCHS='arm64 x86_64' ONLY_ACTIVE_ARCH=NO build
       - name: Verify Release contents and signing restrictions
         run: python3 scripts/package-mac.py verify build/ReleaseDerived/Build/Products/Release/Ade.app
+      - name: Zip the universal macOS app
+        run: |
+          set -euo pipefail
+          app=build/ReleaseDerived/Build/Products/Release/Ade.app
+          version=$(defaults read "$PWD/$app/Contents/Info" CFBundleShortVersionString)
+          build=$(defaults read "$PWD/$app/Contents/Info" CFBundleVersion)
+          ditto --noqtn --norsrc "$app" "Adê.app"
+          ditto -c -k --keepParent "Adê.app" "Ade-${version}-${build}-macos.zip"
+          rm -rf "Adê.app"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ade-macos-zip
+          path: Ade-*-macos.zip
+          if-no-files-found: error
+          retention-days: 14

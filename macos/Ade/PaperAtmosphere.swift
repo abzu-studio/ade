@@ -76,16 +76,17 @@ struct PaperGlassSurface: View {
       if reducedTransparency || contrast == .increased {
         tint
       } else {
-        Rectangle().fill(.ultraThinMaterial)
-        tint.opacity(0.64)
+        // Opaque tint. A live material resampled the animating field under every
+        // sidebar, header and sheet on each frame. The sheen above still moves.
+        tint
         LinearGradient(
-          colors: [.white.opacity(Enki.isNight ? 0.025 : 0.32), .clear, scene.ink.opacity(0.04)],
+          colors: [.white.opacity(night ? 0.025 : 0.32), .clear, scene.ink.opacity(0.04)],
           startPoint: .topLeading, endPoint: .bottomTrailing)
         PaperArtworkClock { time in
           PaperSurfaceReflection(time: time, accented: false, night: night)
         }
         Rectangle().strokeBorder(
-          LinearGradient(colors: [.white.opacity(Enki.isNight ? 0.22 : 0.8), Enki.rule.opacity(0.4)],
+          LinearGradient(colors: [.white.opacity(night ? 0.22 : 0.8), Enki.rule.opacity(0.4)],
                          startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 0.7)
       }
     }.animation(reducedMotion ? nil : .easeInOut(duration: 0.65), value: scene)
@@ -115,7 +116,6 @@ private struct PaperSurfaceReflection: View {
   let time: Double
   let accented: Bool
   let night: Bool
-  private static let bayer = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5]
 
   var body: some View {
     Canvas(opaque: false, rendersAsynchronously: true) { context, size in
@@ -138,23 +138,8 @@ private struct PaperSurfaceReflection: View {
           .init(color: .black.opacity(night ? 0.06 : 0.035), location: 1),
         ]), startPoint: .zero, endPoint: CGPoint(x: size.width, y: size.height)))
 
-      if accented {
-        let spacing = max(2.5, sqrt(size.width * size.height / 5_000))
-        var ink = Path()
-        for column in 0...Int(size.width / spacing) {
-          let x = (Double(column) + 0.5) * spacing
-          let wave = 0.5 + 0.28 * sin(x / size.width * .pi * 2 - phase)
-          for row in 0...Int(size.height / spacing) {
-            let y = (Double(row) + 0.5) * spacing
-            let density = min(0.9, max(0.05, wave + 0.22 * (y / size.height - 0.5)))
-            let threshold = (Double(Self.bayer[(row & 3) * 4 + (column & 3)]) + 0.5) / 16
-            let coverage = min(1.0, max(0.0, (density - threshold) * 5 + 0.5))
-            guard coverage > 0.005 else { continue }
-            let side = spacing * 0.58 * sqrt(coverage)
-            ink.addRect(CGRect(x: x - side / 2, y: y - side / 2, width: side, height: side))
-          }
-        }
-        context.fill(ink, with: .color(reflectionColor.opacity(night ? 0.26 : 0.16)))
+      if accented, let grain = PaperAccentGrain.image(size: size, time: time, night: night) {
+        context.draw(Image(decorative: grain, scale: 1), in: CGRect(origin: .zero, size: size))
         context.stroke(bounds, with: .linearGradient(
           Gradient(colors: [.white.opacity(0.28), .clear, .black.opacity(0.12)]),
           startPoint: .zero, endPoint: CGPoint(x: size.width, y: size.height)), lineWidth: 1)
