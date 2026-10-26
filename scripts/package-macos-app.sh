@@ -15,7 +15,6 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" "$ICONSET"
 cp "$BIN/Ade" "$APP/Contents/MacOS/Ade"
 while IFS= read -r bundle; do
   name="$(basename "$bundle")"
-  cp -R "$bundle" "$APP/Contents/MacOS/$name"
   cp -R "$bundle" "$APP/Contents/Resources/$name"
   echo "Resource bundle: $name"
 done < <(find "$BIN" -maxdepth 1 -type d -name '*.bundle')
@@ -70,6 +69,8 @@ cat > "$APP/Contents/Info.plist" <<'EOF'
 </plist>
 EOF
 
-codesign --force --deep --sign - "$APP"
+if ! codesign --force --sign - "$APP"; then
+  codesign --force --sign - "$APP/Contents/MacOS/Ade"
+fi
 ditto -c -k --keepParent "$APP" "$ROOT/dist/Ade-1.0.0-macOS.zip"
 echo "Packaged $APP"
