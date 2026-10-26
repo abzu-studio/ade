@@ -35,63 +35,115 @@ extension EnvironmentValues {
   }
 }
 
-/// One continuous halftone field. No pictograms or synthetic data marks behind the workspace.
+/// A single translucent light field beneath the workspace, with no row masks or inset bands.
+/// Coherent currents carry soft reflections and ordered ink grain beneath the controls.
 struct SceneInk: View {
   let scene: PaperScene
   let time: Double
 
+  private static let bayer = [
+    0, 48, 12, 60, 3, 51, 15, 63,
+    32, 16, 44, 28, 35, 19, 47, 31,
+    8, 56, 4, 52, 11, 59, 7, 55,
+    40, 24, 36, 20, 43, 27, 39, 23,
+    2, 50, 14, 62, 1, 49, 13, 61,
+    34, 18, 46, 30, 33, 17, 45, 29,
+    10, 58, 6, 54, 9, 57, 5, 53,
+    42, 26, 38, 22, 41, 25, 37, 21,
+  ]
+
   var body: some View {
-    Canvas(opaque: false, rendersAsynchronously: true) { context, size in
+    let color = Enki.atmosphere
+    let night = Enki.isNight
+    return Canvas(opaque: false, rendersAsynchronously: true) { context, size in
       guard size.width > 0, size.height > 0 else { return }
-      // Coherent waves advect density across a fixed print grid. No per-frame randomness.
-      // Periods of 30, 40 and 60 seconds meet exactly at the 120-second clock boundary.
       let phase = time * .pi * 2
       let calm = scene == .documents || scene == .rules || scene == .settings
-      let amplitude = calm ? 0.055 : 0.085
-      let color = Enki.atmosphere
+      let energy = calm ? 0.75 : 1.0
+      let bounds = Path(CGRect(origin: .zero, size: size))
+      let top = CGPoint.zero
       let bottom = CGPoint(x: 0, y: size.height)
-      context.fill(
-        Path(CGRect(origin: .zero, size: size)),
-        with: .linearGradient(
-          Gradient(stops: [
-            .init(color: .clear, location: 0),
-            .init(color: color.opacity(Enki.isNight ? 0.035 : 0.025), location: 0.45),
-            .init(color: color.opacity(Enki.isNight ? 0.23 : 0.15), location: 1),
-          ]), startPoint: .zero, endPoint: bottom))
-      var dots = Path()
-      let step = 4.0
-      // Column waves are shared by every row. Trigonometry runs per row/column,
-      // rather than four times for each dot (thousands of evaluations per frame).
-      struct Column { let x: Double; let tide: Double; let sine: Double; let cosine: Double }
-      let columns = (0...1).map { parity in
-        (0...Int(size.width / step)).map { column in
-          let x = Double(column) * step + Double(parity) * step / 2
-          return Column(x: x,
-            tide: 0.28 + amplitude * sin(x / 145 - phase / 40)
-              + amplitude * 0.6 * sin(x / 310 + phase / 60),
-            sine: sin(x / 95), cosine: cos(x / 95))
+
+      // The tint spans the entire surface. No hard upper boundary or reserved footer.
+      context.fill(bounds, with: .linearGradient(
+        Gradient(stops: [
+          .init(color: .clear, location: 0),
+          .init(color: color.opacity(night ? 0.035 : 0.025), location: 0.38),
+          .init(color: color.opacity(night ? 0.16 : 0.10), location: 1),
+        ]), startPoint: top, endPoint: bottom))
+
+      // Periods divide 120 seconds, keeping the clock wrap seamless. A shared flow
+      // drives both depth and reflected light, instead of independently wandering shapes.
+      let blur = min(54.0, max(24.0, size.height * 0.055))
+      for current in 0..<2 {
+        let offset = Double(current) * .pi
+        var crest = Path()
+        for column in 0...64 {
+          let u = Double(column) / 64
+          let x = (u * 1.16 - 0.08) * size.width
+          let swell = 0.065 * sin(u * .pi * 2 - phase / 12 + offset)
+            + 0.035 * sin(u * .pi * 3 + phase / 20 + offset)
+          let drift = 0.09 * sin(phase / 10 + offset)
+          let y = size.height * (0.62 + Double(current) * 0.20 + energy * (swell + drift))
+          let point = CGPoint(x: x, y: y)
+          if column == 0 { crest.move(to: point) } else { crest.addLine(to: point) }
+        }
+        var depth = crest
+        depth.addLine(to: CGPoint(x: size.width * 1.08, y: size.height * 1.2))
+        depth.addLine(to: CGPoint(x: -size.width * 0.08, y: size.height * 1.2))
+        depth.closeSubpath()
+        context.drawLayer { fluid in
+          fluid.addFilter(.blur(radius: blur))
+          fluid.fill(depth, with: .color(color.opacity((night ? 0.18 : 0.14) * energy)))
+        }
+        context.drawLayer { reflection in
+          reflection.addFilter(.blur(radius: blur * 0.8))
+          reflection.stroke(crest, with: .linearGradient(
+            Gradient(stops: [
+              .init(color: .clear, location: 0),
+              .init(color: .white.opacity((night ? 0.075 : 0.48) * energy), location: 0.35),
+              .init(color: color.opacity(night ? 0.22 : 0.08), location: 0.70),
+              .init(color: .clear, location: 1),
+            ]), startPoint: CGPoint(x: 0, y: 0), endPoint: CGPoint(x: size.width, y: size.height)),
+            style: StrokeStyle(lineWidth: size.height * 0.10, lineCap: .round, lineJoin: .round))
         }
       }
-      for row in 0...Int(size.height / step) {
-        let y = Double(row) * step
-        let v = y / size.height
-        let fade = v * v * (3 - 2 * v)
-        let rowPhase = v * 5 - phase / 30
-        let rowSine = sin(rowPhase), rowCosine = cos(rowPhase)
-        for column in columns[row % 2] {
-          let x = column.x
-          let depth = max(0, min(1, (v - column.tide) / 0.72))
-          let current = 0.82 + 0.18 * (column.sine * rowCosine + column.cosine * rowSine)
-          let density = depth * depth * (3 - 2 * depth) * fade * current
-          let radius = 1.65 * sqrt(density)
-          guard radius > 0.12 else { continue }
-          dots.addEllipse(in: CGRect(x: x - radius, y: y - radius,
-                                     width: radius * 2, height: radius * 2))
+      // A fixed Bayer lattice makes the water read as printed ink. Only its coverage
+      // changes with the same currents as the glass; cells never jump or randomize.
+      // Batch the marks into one draw and bound their count on large displays.
+      let spacing = max(4.0, sqrt(size.width * size.height / 42_000))
+      var grain = Path()
+      let drift = 0.09 * sin(phase / 10)
+      for column in 0...Int(size.width / spacing) {
+        let x = (Double(column) + 0.5) * spacing
+        let u = (x / size.width + 0.08) / 1.16
+        let swell = 0.065 * sin(u * .pi * 2 - phase / 12)
+          + 0.035 * sin(u * .pi * 3 + phase / 20)
+        let crest = 0.62 + energy * (swell + drift)
+        let firstRow = max(0, Int((crest - 0.18) * size.height / spacing) - 1)
+        for row in firstRow...Int(size.height / spacing) {
+          let y = (Double(row) + 0.5) * spacing
+          let depth = y / size.height - crest
+          let rise = min(1.0, max(0.0, (depth + 0.18) / 0.46))
+          let density = rise * rise * (3 - 2 * rise) * 0.82 * energy
+          let threshold = (Double(Self.bayer[(row & 7) * 8 + (column & 7)]) + 0.5) / 64
+          // Smooth coverage across each threshold avoids binary popping or flicker.
+          let coverage = min(1.0, max(0.0, (density - threshold) * 7 + 0.5))
+            * min(1.0, density * 12)
+          guard coverage > 0.005 else { continue }
+          let side = spacing * 0.56 * sqrt(coverage)
+          grain.addRect(CGRect(x: x - side / 2, y: y - side / 2, width: side, height: side))
         }
       }
-      context.fill(dots, with: .linearGradient(
-        Gradient(colors: [color.opacity(0.12), color.opacity(Enki.isNight ? 0.72 : 0.62)]),
-        startPoint: .zero, endPoint: bottom))
+      context.fill(grain, with: .color(color.opacity(night ? 0.46 : 0.60)))
+
+      // A restrained surface sheen, shared across all content instead of glass boxes per row.
+      context.fill(bounds, with: .linearGradient(
+        Gradient(stops: [
+          .init(color: .white.opacity(night ? 0.015 : 0.14), location: 0),
+          .init(color: .clear, location: 0.45),
+          .init(color: .clear, location: 1),
+        ]), startPoint: top, endPoint: CGPoint(x: size.width, y: size.height)))
     }
   }
 }
