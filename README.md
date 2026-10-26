@@ -1,12 +1,38 @@
 # Adê
 
-Adê is a Mac app for one person keeping a space: people, groups, periods, components, events, attendance, volunteering, and the documents that come out of that record.
+Adê is the Mac app for one person who runs a space.
 
-The attendance percentage is `present / (present + absent)`. A combined figure adds those counts. It is not an average of each person's percentage. Pending, excused, unmarked, cancelled, events left out of the count, and people who are not on that event's roster are excluded. If the denominator is zero, the app shows an em dash.
+That person keeps the roster, the events, and the record of who was there. The app is not a set of professor, teaching-assistant, and student roles. There is one local operator. Records stay on this Mac. There are no accounts.
 
-Records stay on this Mac. There are no accounts. Another Mac gets a copy by exporting JSON and importing it. If both copies changed the same space, Adê keeps both until someone chooses a version in Conflicts.
+Attendance is `present / (present + absent)`. Pending, excused, unmarked, cancelled, events left out of the count, and people who are not on that event's roster stay out of the fraction. A zero denominator is an em dash, not 0%. A combined figure adds the counts. It is not an average of each person's percentage.
 
-The interface is English and Spanish. Día clay is the color. The dock icon and the menu glyph are part of the app.
+![Adê on the Mac: spaces, the Demo overview, people, February attendance, Ben marked present, participation, Spanish, and the rules](docs/presentation/walkthrough.gif)
+
+The clip is the Mac app the macOS 15 job launches, the Swift package edition, walked after the attendance proof was already fixed. Eight frames, same run: spaces, overview, people, February service, Ben marked present, participation, Spanish, and rules. [The same walk as a video](docs/presentation/walkthrough.mp4).
+
+## February service
+
+![February service moves from 50.0% to 100.0% when Ben is marked present](docs/presentation/attendance-mark.gif)
+
+February service opens at **50.0%**: present 1, absent 1, excused 1. Cia's excused mark is outside the denominator. Marking Ben present makes it present 2, absent 0. The figure becomes **100.0%**. Excused stays 1. [Same change as a video](docs/presentation/attendance-mark.mp4).
+
+## The space, Spring
+
+![Spring participation moves from 80.0% to 100.0% after that mark](docs/presentation/participation-mark.gif)
+
+Before the mark, Spring is **80.0%**: present 4, absent 1. Ada 3/3, Ben 0/1, Cia 1/1, Dio an em dash (0/0). After Ben is present, the sums are present 5, absent 0, **100.0%**. Ada, Cia, and Dio do not move. Averaging 100, 0, 100, and a blank would not produce 80%, and it would not produce 100% after the mark.
+
+## English and Spanish
+
+![February service in English, then the same event in Spanish](docs/presentation/english-spanish.gif)
+
+The same event, same 100.0%, in Spanish: Porcentaje = presentes / (presentes + ausentes). The package marks with P, A, E, and W. The Xcode app marks with P, A, E, and X.
+
+## What the operator keeps
+
+Spaces. People. Groups, with membership dates. Periods. Components and categories. Events, with a roster, attendance, and volunteers. Participation. Documents. History. Conflicts, when two Macs edited the same space. Data, as JSON export and import. Rules, with the formula on the screen. Settings for language.
+
+Volunteer selection is always manual. The score is not the same in the two editions. The Xcode app uses prior completed volunteering times 3, plus prior attendance times 1. The Swift package, which is the app in the clips, uses the weights in [docs/RULES.md](docs/RULES.md): completed 10, completed within 180 days 5, same component 2, earlier selected 3, earlier interested 1, interested in this event 8, earlier declined −2, earlier volunteer absent −4, earlier present 1 and capped at 10.
 
 ## Two editions, two files
 
@@ -20,23 +46,7 @@ This repository builds two native apps. They do not share a data file, and nothi
 | Checks | `scripts/test-native.sh` on a Mac | `swift test` |
 | Package | `scripts/package-mac.py` | `scripts/package-macos-app.sh` |
 
-Volunteer selection is manual in both. The score is not the same.
-
-The Xcode app scores `completed × 3 + present × 1`: prior completed volunteering times three, plus prior attendance times one. That is the number on the event's volunteer list.
-
-The Swift package uses the weights in `docs/RULES.md`: completed 10, completed within 180 days 5, same component 2, earlier selected 3, earlier interested 1, interested in this event 8, earlier declined −2, earlier volunteer absent −4, earlier present 1 and capped at 10.
-
-## Xcode app
-
-[Adê 0.4.7 for macOS](https://github.com/abzu-studio/ade/releases/tag/v0.4.7) is the universal build (Apple Silicon and Intel), macOS 14 or later. It starts empty. Ad hoc signature, not notarized. macOS may block the first launch; the release notes point at Apple's steps for opening a blocked app. Replacing the app keeps existing Xcode 0.4.x spaces because the bundle id and the file format are unchanged.
-
-Screens: Spaces, Overview, People, Groups, Periods, Components, Events (attendance, volunteers, and the event itself), Participation, Documents, History, Conflicts, Data, Rules, and Settings.
-
-On a scheduled or completed event, click a row or move with the arrow keys, then P, A, E, and X mark present, absent, excused, and pending. N opens the note. Undo is ⌘Z. Search on the attendance list filters the roster. The paper field behind the workspace keeps moving unless Reduce Motion, Reduce Transparency, Increase Contrast, Low Power Mode, an inactive window, or Adê's own motion switch pauses it.
-
-Build and packaging: [docs/BUILD-XCODE.md](docs/BUILD-XCODE.md), [docs/DISTRIBUTION.md](docs/DISTRIBUTION.md). Behavior of this edition: [docs/RULES-XCODE.md](docs/RULES-XCODE.md).
-
-## Swift package
+[Adê 0.4.7 for macOS](https://github.com/abzu-studio/ade/releases/tag/v0.4.7) is the Xcode app: universal, macOS 14 or later, ad hoc, not notarized. It starts empty. Its attendance formula is the one above. Its paper field, attendance rail, and P/A/E/X keys are that edition, not the frames in this page. Build notes: [docs/BUILD-XCODE.md](docs/BUILD-XCODE.md), [docs/DISTRIBUTION.md](docs/DISTRIBUTION.md), [docs/RULES-XCODE.md](docs/RULES-XCODE.md).
 
 ```bash
 swift test
@@ -44,11 +54,15 @@ bash scripts/package-macos-app.sh
 open "dist/Adê.app"
 ```
 
-`swift test` runs `Tests/AdeCoreTests`. The package script writes `dist/Ade-1.0.1-macOS.zip`. Its rules are `docs/RULES.md`. Its screens calculate the same attendance percentage as the Xcode app and do not invent a second one. Dates in history use Puerto Rico time. Export and import live in Data and the File menu.
+The package script writes `dist/Ade-1.0.1-macOS.zip`. Dates in history use Puerto Rico time.
+
+Día clay is the color. The dock icon and the menu glyph (three bars) are part of both apps.
 
 ## Repository metadata
 
-The About line on GitHub is not updated from this checkout. `PATCH /repos/abzu-studio/ade` returned HTTP 403: `Resource not accessible by integration` (`gh: Resource not accessible by integration (HTTP 403)`). The description that belongs there is the first paragraph of this file: a Mac app for spaces, events, attendance, and volunteering, with attendance `present / (present + absent)`, a local file, and English and Spanish. The Xcode app and the Swift package do not share a data file.
+The About line on GitHub is not updated from this checkout. `PATCH /repos/abzu-studio/ade` returned HTTP 403: `Resource not accessible by integration` (`gh: Resource not accessible by integration (HTTP 403)`). The description that belongs there:
+
+Mac app for one operator of a space. Attendance is present / (present + absent). Local file. English and Spanish. Not professor, TA, or student roles.
 
 ## Fonts
 
