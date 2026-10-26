@@ -55,6 +55,10 @@ struct SceneInk: View {
   var body: some View {
     let color = Enki.atmosphere
     let night = Enki.isNight
+    let resolved = color.resolve(in: EnvironmentValues())
+    let red = CGFloat(resolved.red)
+    let green = CGFloat(resolved.green)
+    let blue = CGFloat(resolved.blue)
     return Canvas(opaque: false, rendersAsynchronously: true) { context, size in
       guard size.width > 0, size.height > 0 else { return }
       let phase = time * .pi * 2
@@ -72,41 +76,14 @@ struct SceneInk: View {
           .init(color: color.opacity(night ? 0.16 : 0.10), location: 1),
         ]), startPoint: top, endPoint: bottom))
 
-      // Periods divide 120 seconds, keeping the clock wrap seamless. A shared flow
-      // drives both depth and reflected light, instead of independently wandering shapes.
-      let blur = min(54.0, max(24.0, size.height * 0.055))
-      for current in 0..<2 {
-        let offset = Double(current) * .pi
-        var crest = Path()
-        for column in 0...64 {
-          let u = Double(column) / 64
-          let x = (u * 1.16 - 0.08) * size.width
-          let swell = 0.065 * sin(u * .pi * 2 - phase / 12 + offset)
-            + 0.035 * sin(u * .pi * 3 + phase / 20 + offset)
-          let drift = 0.09 * sin(phase / 10 + offset)
-          let y = size.height * (0.62 + Double(current) * 0.20 + energy * (swell + drift))
-          let point = CGPoint(x: x, y: y)
-          if column == 0 { crest.move(to: point) } else { crest.addLine(to: point) }
-        }
-        var depth = crest
-        depth.addLine(to: CGPoint(x: size.width * 1.08, y: size.height * 1.2))
-        depth.addLine(to: CGPoint(x: -size.width * 0.08, y: size.height * 1.2))
-        depth.closeSubpath()
-        context.drawLayer { fluid in
-          fluid.addFilter(.blur(radius: blur))
-          fluid.fill(depth, with: .color(color.opacity((night ? 0.18 : 0.14) * energy)))
-        }
-        context.drawLayer { reflection in
-          reflection.addFilter(.blur(radius: blur * 0.8))
-          reflection.stroke(crest, with: .linearGradient(
-            Gradient(stops: [
-              .init(color: .clear, location: 0),
-              .init(color: .white.opacity((night ? 0.075 : 0.48) * energy), location: 0.35),
-              .init(color: color.opacity(night ? 0.22 : 0.08), location: 0.70),
-              .init(color: .clear, location: 1),
-            ]), startPoint: CGPoint(x: 0, y: 0), endPoint: CGPoint(x: size.width, y: size.height)),
-            style: StrokeStyle(lineWidth: size.height * 0.10, lineCap: .round, lineJoin: .round))
-        }
+      // Same crest periods as 0.4.5. The soft light is rasterized into a short buffer and
+      // blurred there: a profile of the previous four full-window blurs was the frame cost.
+      if let field = PaperWaveField.image(
+        size: size, time: time, energy: energy, night: night,
+        red: red, green: green, blue: blue)
+      {
+        context.draw(
+          Image(decorative: field, scale: 1), in: CGRect(origin: .zero, size: size))
       }
       // A fixed Bayer lattice makes the water read as printed ink. Only its coverage
       // changes with the same currents as the glass; cells never jump or randomize.

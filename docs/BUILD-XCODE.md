@@ -1,4 +1,4 @@
-# Compilar Adê 0.4.5 (19)
+# Compilar Adê 0.4.6 (20)
 
 Requiere macOS 14+, Xcode 27.0 (27A266a), Apple Swift 6.4 (swiftlang-6.4.0.34.1) y Python 3. El proyecto Xcode está generado e incluido; XcodeGen solo es necesario si se modifica `macos/project.yml`.
 

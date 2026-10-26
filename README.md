@@ -6,7 +6,7 @@ The app is local-first. There are no accounts. Collaboration is a JSON file: exp
 
 ## Download — SwiftUI/Xcode edition
 
-[Adê 0.4.5 for macOS](https://github.com/abzu-studio/ade/releases/tag/v0.4.5) is the DMG edition from `macos/`, with universal Apple Silicon and Intel binaries. The release includes the corresponding source archive and SHA-256 checksums. It starts empty, without demonstration records.
+[Adê 0.4.6 for macOS](https://github.com/abzu-studio/ade/releases/tag/v0.4.6) is the universal build from `macos/`. It starts empty, without demonstration records. The 0.4.5 screens, attendance formula, and copy are unchanged; 0.4.6 only lightens the animated field.
 
 This preview is ad-hoc signed and **not notarized by Apple**. macOS may block its first launch; see the release installation notes. Existing Xcode 0.4.0 data stays in the same local container.
 
@@ -16,7 +16,7 @@ macOS 14 or later.
 
 ## Build
 
-This branch contains two native targets. The Swift Package commands below build 1.0.1 from `Sources/`. The Xcode 0.4.5 app lives in `macos/Ade.xcodeproj`; its checks use `scripts/test-native.sh` and its packaging is documented in [Distribution](docs/DISTRIBUTION.md). They have separate bundle identifiers and storage formats; there is no automatic data migration between them.
+This branch contains two native targets. The Swift Package commands below build 1.0.1 from `Sources/`. The Xcode 0.4.6 app lives in `macos/Ade.xcodeproj`; its checks use `scripts/test-native.sh` and its packaging is documented in [Distribution](docs/DISTRIBUTION.md). They have separate bundle identifiers and storage formats; there is no automatic data migration between them.
 
 ```bash
 swift test

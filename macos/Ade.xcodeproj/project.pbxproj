@@ -32,6 +32,7 @@
 		B30AD68565317C13D6EC5A87 /* OverviewViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 372548E10D210531CEDDEAEB /* OverviewViews.swift */; };
 		B7F73AF7AD28B19C45D20CAA /* Resources in Resources */ = {isa = PBXBuildFile; fileRef = 2F945C8D382325B65B57396A /* Resources */; };
 		CADC249AB1132AC00E4A3AF5 /* PaperScenes.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9F2A20D360DA9D6720E598D /* PaperScenes.swift */; };
+		D4F9B02C5A3E7B81902C1F22 /* PaperWaveField.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3E8A91B4F2D6A70891B0E11 /* PaperWaveField.swift */; };
 		DDCD3A0E61B0F85CD30B3770 /* PaperMotion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41A3840A4B698C3B361674C6 /* PaperMotion.swift */; };
 /* End PBXBuildFile section */
 
@@ -68,6 +69,7 @@
 		833E3B87DE12D2D66D3C8058 /* AppIcon.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = AppIcon.icns; sourceTree = "<group>"; };
 		89B987BA8BDC456F8102FD80 /* CatalogViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogViews.swift; sourceTree = "<group>"; };
 		B9F2A20D360DA9D6720E598D /* PaperScenes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaperScenes.swift; sourceTree = "<group>"; };
+		C3E8A91B4F2D6A70891B0E11 /* PaperWaveField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaperWaveField.swift; sourceTree = "<group>"; };
 		BBCBC572339094540EA68821 /* DocumentViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentViews.swift; sourceTree = "<group>"; };
 		BE2B1F127FC7E0890CA1FCD6 /* WelcomeExperience.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeExperience.swift; sourceTree = "<group>"; };
 		E2ABA67861C75F71A4BF3632 /* UtilityViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UtilityViews.swift; sourceTree = "<group>"; };
@@ -116,6 +118,7 @@
 				1701D91E7D7AA0D9A49DDBB3 /* PaperControls.swift */,
 				41A3840A4B698C3B361674C6 /* PaperMotion.swift */,
 				B9F2A20D360DA9D6720E598D /* PaperScenes.swift */,
+				C3E8A91B4F2D6A70891B0E11 /* PaperWaveField.swift */,
 				581FDEF97277A161C4A118D6 /* PersonParticipationView.swift */,
 				214929FFFDFF494895428397 /* QuickOpen.swift */,
 				70A2919833DE9EE4D62F9490 /* ReportHistoryViews.swift */,
@@ -254,6 +257,7 @@
 				A3DBB5C5FA80B25E426432F3 /* PaperControls.swift in Sources */,
 				DDCD3A0E61B0F85CD30B3770 /* PaperMotion.swift in Sources */,
 				CADC249AB1132AC00E4A3AF5 /* PaperScenes.swift in Sources */,
+				D4F9B02C5A3E7B81902C1F22 /* PaperWaveField.swift in Sources */,
 				95B20FEC3E85D9DC50055C4D /* PersonParticipationView.swift in Sources */,
 				19F37283A25763E50EFE9A57 /* QuickOpen.swift in Sources */,
 				ACF02675E83511F463B6C77F /* ReportHistoryViews.swift in Sources */,
@@ -313,7 +317,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 19;
+				CURRENT_PROJECT_VERSION = 20;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -334,7 +338,7 @@
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.4.5;
+				MARKETING_VERSION = 0.4.6;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -382,7 +386,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 19;
+				CURRENT_PROJECT_VERSION = 20;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = NO;
@@ -409,7 +413,7 @@
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.4.5;
+				MARKETING_VERSION = 0.4.6;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;

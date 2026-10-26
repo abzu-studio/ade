@@ -76,16 +76,17 @@ struct PaperGlassSurface: View {
       if reducedTransparency || contrast == .increased {
         tint
       } else {
-        Rectangle().fill(.ultraThinMaterial)
-        tint.opacity(0.64)
+        // Opaque tint. A live material resampled the animating field under every
+        // sidebar, header and sheet on each frame. The sheen above still moves.
+        tint
         LinearGradient(
-          colors: [.white.opacity(Enki.isNight ? 0.025 : 0.32), .clear, scene.ink.opacity(0.04)],
+          colors: [.white.opacity(night ? 0.025 : 0.32), .clear, scene.ink.opacity(0.04)],
           startPoint: .topLeading, endPoint: .bottomTrailing)
         PaperArtworkClock { time in
           PaperSurfaceReflection(time: time, accented: false, night: night)
         }
         Rectangle().strokeBorder(
-          LinearGradient(colors: [.white.opacity(Enki.isNight ? 0.22 : 0.8), Enki.rule.opacity(0.4)],
+          LinearGradient(colors: [.white.opacity(night ? 0.22 : 0.8), Enki.rule.opacity(0.4)],
                          startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 0.7)
       }
     }.animation(reducedMotion ? nil : .easeInOut(duration: 0.65), value: scene)
