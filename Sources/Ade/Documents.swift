@@ -1,4 +1,5 @@
 import SwiftUI
+import AdeCore
 
 struct DocumentsScreen: View {
     @EnvironmentObject private var store: AdeStore

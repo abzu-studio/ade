@@ -1,4 +1,5 @@
 import SwiftUI
+import AdeCore
 
 struct ParticipationScreen: View {
     @EnvironmentObject private var store: AdeStore

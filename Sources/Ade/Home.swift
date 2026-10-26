@@ -1,4 +1,5 @@
 import SwiftUI
+import AdeCore
 
 struct HomeScreen: View {
     @EnvironmentObject private var store: AdeStore

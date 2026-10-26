@@ -1,6 +1,5 @@
 import AppKit
 import Foundation
-import SwiftUI
 import UniformTypeIdentifiers
 import AdeCore
 
@@ -70,7 +69,7 @@ final class AdeStore: ObservableObject {
         database.people.filter { $0.spaceId == spaceId }.sorted(by: byName)
     }
 
-    func groups(in spaceId: String) -> [Group] {
+    func groups(in spaceId: String) -> [AdeCore.Group] {
         database.groups.filter { $0.spaceId == spaceId }.sorted(by: byName)
     }
 
@@ -82,7 +81,7 @@ final class AdeStore: ObservableObject {
         database.components.filter { $0.spaceId == spaceId }.sorted(by: byName)
     }
 
-    func categories(in spaceId: String, componentId: String? = nil) -> [Category] {
+    func categories(in spaceId: String, componentId: String? = nil) -> [AdeCore.Category] {
         database.categories.filter { $0.spaceId == spaceId && (componentId == nil || $0.componentId == componentId) }.sorted(by: byName)
     }
 
@@ -141,9 +140,7 @@ final class AdeStore: ObservableObject {
     }
 
     func go(_ route: AdeRoute) {
-        withAnimation(.snappy(duration: 0.2)) {
-            self.route = route
-        }
+        self.route = route
     }
 
     func perform(_ action: Action, announce: Announce = .saved) {
@@ -342,24 +339,24 @@ final class AdeStore: ObservableObject {
         }
     }
 
-    private func handleKey(_ event: NSEvent) -> Bool {
-        if event.modifierFlags.contains(.command) || event.modifierFlags.contains(.control) || event.modifierFlags.contains(.option) {
+    private func handleKey(_ key: NSEvent) -> Bool {
+        if key.modifierFlags.contains(.command) || key.modifierFlags.contains(.control) || key.modifierFlags.contains(.option) {
             return false
         }
         if NSApp.keyWindow?.firstResponder is NSTextView { return false }
         guard route == .events, let spaceId, let eventId else { return false }
-        guard let event = database.events.first(where: { $0.id == eventId }),
-              event.status == .scheduled || event.status == .completed else { return false }
+        guard let record = database.events.first(where: { $0.id == eventId }),
+              record.status == .scheduled || record.status == .completed else { return false }
         guard !attendancePeople.isEmpty else { return false }
-        let chars = event.charactersIgnoringModifiers?.lowercased() ?? ""
+        let chars = key.charactersIgnoringModifiers?.lowercased() ?? ""
         switch chars {
         case "p": markAttendance(.present, spaceId: spaceId, eventId: eventId)
         case "a": markAttendance(.absent, spaceId: spaceId, eventId: eventId)
         case "e": markAttendance(.excused, spaceId: spaceId, eventId: eventId)
         case "w": markAttendance(.pending, spaceId: spaceId, eventId: eventId)
         default:
-            if event.keyCode == 126 { moveAttendance(-1); return true }
-            if event.keyCode == 125 { moveAttendance(1); return true }
+            if key.keyCode == 126 { moveAttendance(-1); return true }
+            if key.keyCode == 125 { moveAttendance(1); return true }
             return false
         }
         return true
@@ -489,9 +486,9 @@ private func byName(_ lhs: String, _ rhs: String) -> Bool {
 
 private protocol Named { var name: String { get } }
 extension Person: Named {}
-extension Group: Named {}
+extension AdeCore.Group: Named {}
 extension ActivityComponent: Named {}
-extension Category: Named {}
+extension AdeCore.Category: Named {}
 extension DocumentTemplate: Named {}
 extension Asset: Named {}
 

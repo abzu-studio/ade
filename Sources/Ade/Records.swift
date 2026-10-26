@@ -1,4 +1,5 @@
 import SwiftUI
+import AdeCore
 
 struct OverviewScreen: View {
     @EnvironmentObject private var store: AdeStore
@@ -47,7 +48,7 @@ struct OverviewScreen: View {
 
     private var spaceId: String { store.spaceId ?? "" }
     private var people: [Person] { store.people(in: spaceId) }
-    private var groups: [Group] { store.groups(in: spaceId) }
+    private var groups: [AdeCore.Group] { store.groups(in: spaceId) }
     private var periods: [Period] { store.periods(in: spaceId) }
     private var components: [ActivityComponent] { store.components(in: spaceId) }
     private var events: [AdeEvent] { store.events(in: spaceId) }
@@ -274,7 +275,7 @@ struct GroupsScreen: View {
     }
 
     private var spaceId: String { store.spaceId ?? "" }
-    private var groups: [Group] { store.groups(in: spaceId) }
+    private var groups: [AdeCore.Group] { store.groups(in: spaceId) }
 
     @ViewBuilder private var detail: some View {
         if let group = groups.first(where: { $0.id == store.groupId }) {

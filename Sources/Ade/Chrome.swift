@@ -1,4 +1,5 @@
 import SwiftUI
+import AdeCore
 
 struct Verb: View {
     var title: String
@@ -320,7 +321,7 @@ struct RootView: View {
             Sidebar()
                 .navigationSplitViewColumnWidth(min: 196, ideal: 228, max: 280)
         } detail: {
-            Group {
+            SwiftUI.Group {
                 if store.space == nil {
                     HomeScreen()
                 } else {

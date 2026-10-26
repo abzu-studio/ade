@@ -1,4 +1,5 @@
 import SwiftUI
+import AdeCore
 
 struct EventsScreen: View {
     @EnvironmentObject private var store: AdeStore
