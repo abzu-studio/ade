@@ -1,37 +1,37 @@
-# Adê para Mac
+# Adê
 
-Aplicación nativa en SwiftUI para organizar espacios, personas, eventos, voluntariado, asistencia y documentos. Requiere macOS 14 o posterior. Los datos se guardan localmente, sin servicios de red.
+Adê is a native Mac app for one operator. A space holds people, groups, periods, components, events, attendance, volunteering, and documents. The attendance percentage is `present / (present + absent)`. Pending, excused, and unmarked people are not absences.
 
-Versión **0.3.2 (11)**.
+The app is local-first. There are no accounts. Collaboration is a JSON file: export a backup or one space, and import it on another Mac. When both sides changed the same record, Adê keeps both versions until you choose.
 
-## Funciones
+## Requirements
 
-- Personas activas e inactivas; grupos con fechas de pertenencia.
-- Períodos, componentes y categorías.
-- Eventos con participantes, capacidad, duplicación y cancelación.
-- Asistencia con notas, historial y resultados individuales generales, por componente y por categoría.
-- Sugerencias de voluntariado con puntuación visible y selección manual.
-- Plantillas PDF con texto, imágenes, columnas y fondos PDF.
-- Importación y exportación JSON, revisiones recuperables y versiones en conflicto.
-- Español e inglés; temas Índigo y Grafito de día y de noche; movimiento adaptado a accesibilidad.
+macOS 14 or later.
 
-## Compilar y verificar
+## Build
 
-Abre `macos/Ade.xcodeproj` en Xcode con un SDK de macOS 14 o posterior. El proyecto está incluido; XcodeGen solo es necesario para regenerarlo desde `macos/project.yml`.
-
-```sh
-xcodebuild -project macos/Ade.xcodeproj -scheme Ade \
-  -configuration Release -derivedDataPath build/ReleaseDerived \
-  CODE_SIGN_IDENTITY=- build
-./scripts/test-native.sh
-./scripts/test-ui.sh
-python3 scripts/audit-source.py
+```bash
+swift test
+bash scripts/package-macos-app.sh
+open "dist/Adê.app"
 ```
 
-La firma ad hoc permite verificación local; no produce una distribución notarizada. Las pruebas de interfaz requieren una sesión gráfica de macOS habilitada para Xcode y usan datos temporales aislados. Los ejemplos se compilan únicamente en Debug.
+`swift test` runs the rule suite in `Tests/AdeCoreTests`. The package script builds a release `.app`, generates the dock icon, and writes `dist/Ade-1.0.1-macOS.zip`.
 
-## Documentación
+## Using it
 
-[Reglas](docs/RULES.md) · [Arquitectura](docs/ARCHITECTURE.md) · [Distribución](docs/DISTRIBUTION.md) · [Privacidad](PRIVACY.md) · [Contribuir](CONTRIBUTING.md).
+Open Adê from the Dock. Create a space, or load the demo space. Everything else belongs to the open space: Overview, People, Groups, Periods, Components, Events, Participation, Documents, History, Conflicts, Data, and Rules.
 
-Código bajo [licencia MIT](LICENSE). Las fuentes conservan sus [licencias OFL](THIRD_PARTY_NOTICES.md).
+Attendance and volunteers stay on the event. Participation reads the same counts across a period. Undo is ⌘Z. On an event that is scheduled or completed, P, A, E, and W mark present, absent, excused, and pending when a text field is not focused.
+
+The interface is English and Spanish. Switch language from the space header or the Language menu. Dates in history are shown in Puerto Rico time.
+
+Export and import live in the Data section and in the File menu. A backup replaces the database on this Mac after you confirm. A space file merges. Identical records stay put. Conflicts remain until you keep the local version, use the other version, or keep both.
+
+## Rules
+
+`docs/RULES.md` is the behavior contract. `Sources/AdeCore` is the code those rules run. The screens do not calculate a second percentage.
+
+## Fonts
+
+The interface uses Barlow Condensed (Jeremy Tribby), IBM Plex Mono (IBM), and Inter (Rasmus Andersson), under the SIL Open Font License 1.1. See `Sources/Ade/Resources/Fonts/OFL.txt`.
