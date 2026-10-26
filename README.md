@@ -1,40 +1,37 @@
-# Adê
+# Adê para Mac
 
-Adê is a local-first desktop app for spaces, people, events, attendance, volunteering, and documents. It is built for Mac. On another system the app stays usable and shows a short notice.
+Aplicación nativa en SwiftUI para organizar espacios, personas, eventos, voluntariado, asistencia y documentos. Requiere macOS 14 o posterior. Los datos se guardan localmente, sin servicios de red.
 
-Business rules live in `src/core` and do not depend on React or the browser. The screens call that core. They use the default shadcn/ui components only.
+Versión **0.3.2 (11)**.
 
-## Run
+## Funciones
 
-```bash
-npm install
-npm run dev
+- Personas activas e inactivas; grupos con fechas de pertenencia.
+- Períodos, componentes y categorías.
+- Eventos con participantes, capacidad, duplicación y cancelación.
+- Asistencia con notas, historial y resultados individuales generales, por componente y por categoría.
+- Sugerencias de voluntariado con puntuación visible y selección manual.
+- Plantillas PDF con texto, imágenes, columnas y fondos PDF.
+- Importación y exportación JSON, revisiones recuperables y versiones en conflicto.
+- Español e inglés; temas Índigo y Grafito de día y de noche; movimiento adaptado a accesibilidad.
+
+## Compilar y verificar
+
+Abre `macos/Ade.xcodeproj` en Xcode con un SDK de macOS 14 o posterior. El proyecto está incluido; XcodeGen solo es necesario para regenerarlo desde `macos/project.yml`.
+
+```sh
+xcodebuild -project macos/Ade.xcodeproj -scheme Ade \
+  -configuration Release -derivedDataPath build/ReleaseDerived \
+  CODE_SIGN_IDENTITY=- build
+./scripts/test-native.sh
+./scripts/test-ui.sh
+python3 scripts/audit-source.py
 ```
 
-Open http://localhost:3000. `npm test` runs the rule and PDF tests. `npm run build` builds the Next.js app.
+La firma ad hoc permite verificación local; no produce una distribución notarizada. Las pruebas de interfaz requieren una sesión gráfica de macOS habilitada para Xcode y usan datos temporales aislados. Los ejemplos se compilan únicamente en Debug.
 
-## Layout
+## Documentación
 
-- `src/core` — domain types, attendance, volunteering, documents, history, and sync
-- `src/persistence` — IndexedDB and file import/export
-- `src/lib/pdf` — PDF rendering for a planned document
-- `src/app` — screens for the activity cycle
-- `src/i18n` — English and Spanish
-- `docs/RULES.md` — the calculation and state rules
-- `docs/ARCHITECTURE.md` — how the pieces fit
+[Reglas](docs/RULES.md) · [Arquitectura](docs/ARCHITECTURE.md) · [Distribución](docs/DISTRIBUTION.md) · [Privacidad](PRIVACY.md) · [Contribuir](CONTRIBUTING.md).
 
-## Activity cycle
-
-Create a space, add people, a component, and a category, then create an event. Schedule it, put people on the participant list, review volunteer suggestions, select volunteers by hand, record attendance, read participation, and generate a PDF.
-
-The home screen can load a demo space with that cycle already filled in.
-
-## Language and storage
-
-The language switch writes the locale on this Mac. Data is stored in IndexedDB under the database name `ade`. History can undo, redo, and show an older revision. Data can export a full backup or one space. Importing a space keeps both versions when the same record changed in two places.
-
-## shadcn
-
-`.cursor/mcp.json` starts the shadcn MCP server (`npx shadcn@latest mcp`). Components were added from the `@shadcn` registry with the default neutral theme. Do not restyle that theme here; brand identity is applied later.
-
-Magic MCP can help with later interface work. It is not required for these screens and is not configured.
+Código bajo [licencia MIT](LICENSE). Las fuentes conservan sus [licencias OFL](THIRD_PARTY_NOTICES.md).
