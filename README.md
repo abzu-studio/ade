@@ -8,6 +8,26 @@ Records stay on this Mac. There are no accounts. Another Mac gets a copy by expo
 
 The interface is English and Spanish. Día clay is the color. The dock icon and the menu glyph are part of the app.
 
+## Recorded on a Mac
+
+These clips are Adê 0.4.7, the borderless Xcode app, recorded on a Mac. The space is Amsa. Amsa has 0 people and 0 events.
+
+![Amsa on the space hub, with 0 people and 0 events. Night Indigo is selected, and the paper field moves.](docs/presentation/space-hub.gif)
+
+The space hub lists Amsa: 0 people, 0 events. Night · Indigo is selected. The paper field behind the page keeps moving.
+
+![Components for Amsa. The screen says No records, and the paper field moves.](docs/presentation/components-empty.gif)
+
+Components is empty. The screen says No records.
+
+![Components in English, then Spanish, then English.](docs/presentation/language-toggle.gif)
+
+The same screen goes from English to Spanish and back to English. In Spanish the title is Componentes, and the empty state is Sin registros.
+
+![Components, with the workspace meeting the window edge.](docs/presentation/no-border.png)
+
+The still is that window. The workspace meets the edge.
+
 ## Two editions, two files
 
 This repository builds two native apps. They do not share a data file, and nothing migrates one into the other.
