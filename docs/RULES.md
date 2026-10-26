@@ -1,6 +1,6 @@
 # Adê rules
 
-The code in `src/core` is the source of these rules. Screens display the same constants.
+The code in `Sources/AdeCore` is the source of these rules. Screens display the same constants.
 
 Dates are civil dates `YYYY-MM-DD`. Comparisons are lexicographic and inclusive. An open membership end is `null` and means the membership is still running. Two ranges overlap when they share a day.
 
@@ -121,7 +121,7 @@ A template has a page size (`letter` 612×792 or `a4` 595.28×841.89), an option
 - an image asset (PNG or JPEG)
 - columns bound to a list
 
-Column text flows by line height `fontSize * 1.35` and wraps by truncating at about `fontSize * 0.5` points per character. Static text and images repeat on every page. The background page index is clamped to the PDF. The planner in `src/core/documents.ts` resolves live Adê data, including the same participation figures as the participation screen. `src/lib/pdf/render.ts` draws the plan with pdf-lib.
+Column text flows by line height `fontSize * 1.35` and wraps by truncating at about `fontSize * 0.5` points per character. Static text and images repeat on every page. The background page index is clamped to the PDF. The planner in `Sources/AdeCore/Documents.swift` resolves live Adê data, including the same participation figures as the participation screen. `Sources/Ade/PDF.swift` draws the plan with Core Graphics and Helvetica.
 
 ## History
 

@@ -1,40 +1,37 @@
 # Adê
 
-Adê is a local-first desktop app for spaces, people, events, attendance, volunteering, and documents. It is built for Mac. On another system the app stays usable and shows a short notice.
+Adê is a native Mac app for one operator. A space holds people, groups, periods, components, events, attendance, volunteering, and documents. The attendance percentage is `present / (present + absent)`. Pending, excused, and unmarked people are not absences.
 
-Business rules live in `src/core` and do not depend on React or the browser. The screens call that core. They use the default shadcn/ui components only.
+The app is local-first. There are no accounts. Collaboration is a JSON file: export a backup or one space, and import it on another Mac. When both sides changed the same record, Adê keeps both versions until you choose.
 
-## Run
+## Requirements
+
+macOS 14 or later.
+
+## Build
 
 ```bash
-npm install
-npm run dev
+swift test
+bash scripts/package-macos-app.sh
+open "dist/Adê.app"
 ```
 
-Open http://localhost:3000. `npm test` runs the rule and PDF tests. `npm run build` builds the Next.js app.
+`swift test` runs the rule suite in `Tests/AdeCoreTests`. The package script builds a release `.app`, generates the dock icon, and writes `dist/Ade-1.0.1-macOS.zip`.
 
-## Layout
+## Using it
 
-- `src/core` — domain types, attendance, volunteering, documents, history, and sync
-- `src/persistence` — IndexedDB and file import/export
-- `src/lib/pdf` — PDF rendering for a planned document
-- `src/app` — screens for the activity cycle
-- `src/i18n` — English and Spanish
-- `docs/RULES.md` — the calculation and state rules
-- `docs/ARCHITECTURE.md` — how the pieces fit
+Open Adê from the Dock. Create a space, or load the demo space. Everything else belongs to the open space: Overview, People, Groups, Periods, Components, Events, Participation, Documents, History, Conflicts, Data, and Rules.
 
-## Activity cycle
+Attendance and volunteers stay on the event. Participation reads the same counts across a period. Undo is ⌘Z. On an event that is scheduled or completed, P, A, E, and W mark present, absent, excused, and pending when a text field is not focused.
 
-Create a space, add people, a component, and a category, then create an event. Schedule it, put people on the participant list, review volunteer suggestions, select volunteers by hand, record attendance, read participation, and generate a PDF.
+The interface is English and Spanish. Switch language from the space header or the Language menu. Dates in history are shown in Puerto Rico time.
 
-The home screen can load a demo space with that cycle already filled in.
+Export and import live in the Data section and in the File menu. A backup replaces the database on this Mac after you confirm. A space file merges. Identical records stay put. Conflicts remain until you keep the local version, use the other version, or keep both.
 
-## Language and storage
+## Rules
 
-The language switch writes the locale on this Mac. Data is stored in IndexedDB under the database name `ade`. History can undo, redo, and show an older revision. Data can export a full backup or one space. Importing a space keeps both versions when the same record changed in two places.
+`docs/RULES.md` is the behavior contract. `Sources/AdeCore` is the code those rules run. The screens do not calculate a second percentage.
 
-## shadcn
+## Fonts
 
-`.cursor/mcp.json` starts the shadcn MCP server (`npx shadcn@latest mcp`). Components were added from the `@shadcn` registry with the default neutral theme. Do not restyle that theme here; brand identity is applied later.
-
-Magic MCP can help with later interface work. It is not required for these screens and is not configured.
+The interface uses Barlow Condensed (Jeremy Tribby), IBM Plex Mono (IBM), and Inter (Rasmus Andersson), under the SIL Open Font License 1.1. See `Sources/Ade/Resources/Fonts/OFL.txt`.
