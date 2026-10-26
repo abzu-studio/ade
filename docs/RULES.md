@@ -1,5 +1,8 @@
 # Adê rules
 
+This document describes `Sources/Ade` and `Sources/AdeCore` (Swift Package 1.0.1). The preserved Xcode 0.3.2 implementation is documented separately in [RULES-XCODE.md](RULES-XCODE.md). Its storage format and rules are not interchangeable with this package.
+
+
 The code in `Sources/AdeCore` is the source of these rules. Screens display the same constants.
 
 Dates are civil dates `YYYY-MM-DD`. Comparisons are lexicographic and inclusive. An open membership end is `null` and means the membership is still running. Two ranges overlap when they share a day.

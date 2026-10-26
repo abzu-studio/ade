@@ -1,5 +1,8 @@
 # Architecture
 
+This document describes `Sources/Ade` and `Sources/AdeCore` (Swift Package 1.0.1). The preserved Xcode 0.3.2 implementation is documented separately in [ARCHITECTURE-XCODE.md](ARCHITECTURE-XCODE.md). Its storage format and rules are not interchangeable with this package.
+
+
 Adê is a native macOS app. SwiftUI draws the window. `AdeCore` holds every business rule. The screens dispatch actions and render the result. The core does not import SwiftUI or AppKit.
 
 ```

@@ -10,6 +10,8 @@ macOS 14 or later.
 
 ## Build
 
+This branch contains two native targets. The Swift Package commands below build 1.0.1 from `Sources/`. The preserved Xcode 0.3.2 app lives in `macos/Ade.xcodeproj`; its checks use `scripts/test-native.sh` and its packaging is documented in [Distribution](docs/DISTRIBUTION.md). They have separate bundle identifiers and storage formats; there is no automatic data migration between them.
+
 ```bash
 swift test
 bash scripts/package-macos-app.sh

@@ -1,0 +1,519 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		085189F64BD4FB458D2F60E7 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AE44788A039E59F43358DB2 /* AppModel.swift */; };
+		09B0162F152032FC3887F787 /* LocalStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64C3D6FF38971E6EAF6042E6 /* LocalStore.swift */; };
+		0BF606B0DAC5DA43F3C2A108 /* CatalogViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89B987BA8BDC456F8102FD80 /* CatalogViews.swift */; };
+		11AC67143BC47452E020EFEB /* AppIcon.icns in Resources */ = {isa = PBXBuildFile; fileRef = 833E3B87DE12D2D66D3C8058 /* AppIcon.icns */; };
+		276D3342E2AA89C9385B3C50 /* AdeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C29AF2AC82517BF22E5F388 /* AdeApp.swift */; };
+		4BD9828E0F1A1A643ED0B09B /* OpeningSound.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBB68D047B38B79108DF24C0 /* OpeningSound.swift */; };
+		57B567B5D8CA30205AA0A224 /* WelcomeExperience.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE2B1F127FC7E0890CA1FCD6 /* WelcomeExperience.swift */; };
+		78A79D72C62AC334075496F7 /* UtilityViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2ABA67861C75F71A4BF3632 /* UtilityViews.swift */; };
+		7D157948566ECA37D636510A /* WorkflowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E7DECD6F6B6D71484AFE961 /* WorkflowTests.swift */; };
+		7E5DAFF6156128387D169BCA /* DocumentViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBCBC572339094540EA68821 /* DocumentViews.swift */; };
+		7FDDE7A6B59B2EC03D0CCD81 /* PaperAtmosphere.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C907F9733DFC16A3790699F /* PaperAtmosphere.swift */; };
+		819EB5E1371C18CDE7B790D5 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C0DE67E60D8EE81A7ED9340 /* Theme.swift */; };
+		855FF77126130EA1CAE481D8 /* ExperienceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E93025342110176056B09C2 /* ExperienceTests.swift */; };
+		8ABCA6BF2DC778B1DAC68542 /* Rules.swift in Sources */ = {isa = PBXBuildFile; fileRef = 471755A9C46D289B1DBE8C5E /* Rules.swift */; };
+		8DC5882CD81AF901D147D53D /* Domain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79F6364BED4D33C38AB1819E /* Domain.swift */; };
+		92033CE41A1985572301C01E /* EventViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 329DF6A808249EA6FD9C15DF /* EventViews.swift */; };
+		95B20FEC3E85D9DC50055C4D /* PersonParticipationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 581FDEF97277A161C4A118D6 /* PersonParticipationView.swift */; };
+		A027ABDA7A0D6C10627C784F /* NativePDF.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44F0CD90891BA081FA81AF35 /* NativePDF.swift */; };
+		A3DBB5C5FA80B25E426432F3 /* PaperControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1701D91E7D7AA0D9A49DDBB3 /* PaperControls.swift */; };
+		AB665A734887783EECBC95B3 /* DevelopmentFixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = F78E8AF787F8906D146B0EAE /* DevelopmentFixtures.swift */; };
+		ACF02675E83511F463B6C77F /* ReportHistoryViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70A2919833DE9EE4D62F9490 /* ReportHistoryViews.swift */; };
+		B30AD68565317C13D6EC5A87 /* OverviewViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 372548E10D210531CEDDEAEB /* OverviewViews.swift */; };
+		B7F73AF7AD28B19C45D20CAA /* Resources in Resources */ = {isa = PBXBuildFile; fileRef = 2F945C8D382325B65B57396A /* Resources */; };
+		CADC249AB1132AC00E4A3AF5 /* PaperScenes.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9F2A20D360DA9D6720E598D /* PaperScenes.swift */; };
+		DDCD3A0E61B0F85CD30B3770 /* PaperMotion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41A3840A4B698C3B361674C6 /* PaperMotion.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		9FC023F9BD58E4FF8316BBD3 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = D1762411893E91DD997B8DF7 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = BC0144E687062D0621D08C50;
+			remoteInfo = Ade;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		0C0DE67E60D8EE81A7ED9340 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		0E7DECD6F6B6D71484AFE961 /* WorkflowTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkflowTests.swift; sourceTree = "<group>"; };
+		1701D91E7D7AA0D9A49DDBB3 /* PaperControls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaperControls.swift; sourceTree = "<group>"; };
+		2F945C8D382325B65B57396A /* Resources */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Resources; path = Ade/Resources; sourceTree = SOURCE_ROOT; };
+		329DF6A808249EA6FD9C15DF /* EventViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventViews.swift; sourceTree = "<group>"; };
+		372548E10D210531CEDDEAEB /* OverviewViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverviewViews.swift; sourceTree = "<group>"; };
+		3AE44788A039E59F43358DB2 /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
+		3C29AF2AC82517BF22E5F388 /* AdeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdeApp.swift; sourceTree = "<group>"; };
+		41A3840A4B698C3B361674C6 /* PaperMotion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaperMotion.swift; sourceTree = "<group>"; };
+		44F0CD90891BA081FA81AF35 /* NativePDF.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativePDF.swift; sourceTree = "<group>"; };
+		471755A9C46D289B1DBE8C5E /* Rules.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Rules.swift; sourceTree = "<group>"; };
+		4C907F9733DFC16A3790699F /* PaperAtmosphere.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaperAtmosphere.swift; sourceTree = "<group>"; };
+		52949123DAAE3C9FA426AA52 /* AdeUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AdeUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		581FDEF97277A161C4A118D6 /* PersonParticipationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonParticipationView.swift; sourceTree = "<group>"; };
+		64C3D6FF38971E6EAF6042E6 /* LocalStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalStore.swift; sourceTree = "<group>"; };
+		6E93025342110176056B09C2 /* ExperienceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExperienceTests.swift; sourceTree = "<group>"; };
+		70A2919833DE9EE4D62F9490 /* ReportHistoryViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReportHistoryViews.swift; sourceTree = "<group>"; };
+		79F6364BED4D33C38AB1819E /* Domain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Domain.swift; sourceTree = "<group>"; };
+		833E3B87DE12D2D66D3C8058 /* AppIcon.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = AppIcon.icns; sourceTree = "<group>"; };
+		89B987BA8BDC456F8102FD80 /* CatalogViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogViews.swift; sourceTree = "<group>"; };
+		B9F2A20D360DA9D6720E598D /* PaperScenes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaperScenes.swift; sourceTree = "<group>"; };
+		BBCBC572339094540EA68821 /* DocumentViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentViews.swift; sourceTree = "<group>"; };
+		BE2B1F127FC7E0890CA1FCD6 /* WelcomeExperience.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeExperience.swift; sourceTree = "<group>"; };
+		E2ABA67861C75F71A4BF3632 /* UtilityViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UtilityViews.swift; sourceTree = "<group>"; };
+		EB9039C3F3C28D6EC8B05401 /* Ade.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Ade.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		EBB68D047B38B79108DF24C0 /* OpeningSound.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpeningSound.swift; sourceTree = "<group>"; };
+		F78E8AF787F8906D146B0EAE /* DevelopmentFixtures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevelopmentFixtures.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		82600A104BDB536957054796 = {
+			isa = PBXGroup;
+			children = (
+				833E3B87DE12D2D66D3C8058 /* AppIcon.icns */,
+				2F945C8D382325B65B57396A /* Resources */,
+				EFAECC165B70345C1B426183 /* Ade */,
+				9D00ECCD00C917E645392644 /* UITests */,
+				F6376CE76CB057B946B50ECB /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		9D00ECCD00C917E645392644 /* UITests */ = {
+			isa = PBXGroup;
+			children = (
+				6E93025342110176056B09C2 /* ExperienceTests.swift */,
+				0E7DECD6F6B6D71484AFE961 /* WorkflowTests.swift */,
+			);
+			name = UITests;
+			path = "../native-tests/UITests";
+			sourceTree = "<group>";
+		};
+		EFAECC165B70345C1B426183 /* Ade */ = {
+			isa = PBXGroup;
+			children = (
+				3C29AF2AC82517BF22E5F388 /* AdeApp.swift */,
+				3AE44788A039E59F43358DB2 /* AppModel.swift */,
+				89B987BA8BDC456F8102FD80 /* CatalogViews.swift */,
+				F78E8AF787F8906D146B0EAE /* DevelopmentFixtures.swift */,
+				BBCBC572339094540EA68821 /* DocumentViews.swift */,
+				79F6364BED4D33C38AB1819E /* Domain.swift */,
+				329DF6A808249EA6FD9C15DF /* EventViews.swift */,
+				64C3D6FF38971E6EAF6042E6 /* LocalStore.swift */,
+				44F0CD90891BA081FA81AF35 /* NativePDF.swift */,
+				EBB68D047B38B79108DF24C0 /* OpeningSound.swift */,
+				372548E10D210531CEDDEAEB /* OverviewViews.swift */,
+				4C907F9733DFC16A3790699F /* PaperAtmosphere.swift */,
+				1701D91E7D7AA0D9A49DDBB3 /* PaperControls.swift */,
+				41A3840A4B698C3B361674C6 /* PaperMotion.swift */,
+				B9F2A20D360DA9D6720E598D /* PaperScenes.swift */,
+				581FDEF97277A161C4A118D6 /* PersonParticipationView.swift */,
+				70A2919833DE9EE4D62F9490 /* ReportHistoryViews.swift */,
+				471755A9C46D289B1DBE8C5E /* Rules.swift */,
+				0C0DE67E60D8EE81A7ED9340 /* Theme.swift */,
+				E2ABA67861C75F71A4BF3632 /* UtilityViews.swift */,
+				BE2B1F127FC7E0890CA1FCD6 /* WelcomeExperience.swift */,
+			);
+			path = Ade;
+			sourceTree = "<group>";
+		};
+		F6376CE76CB057B946B50ECB /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				EB9039C3F3C28D6EC8B05401 /* Ade.app */,
+				52949123DAAE3C9FA426AA52 /* AdeUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		872DF68BEA9DD3770CE29C09 /* AdeUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A39F3FF8F21D6EA09D8760E8 /* Build configuration list for PBXNativeTarget "AdeUITests" */;
+			buildPhases = (
+				A3D9E43E73DFFD284C4CE81F /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				BB4CEEC828E7C7FC83C30408 /* PBXTargetDependency */,
+			);
+			name = AdeUITests;
+			packageProductDependencies = (
+			);
+			productName = AdeUITests;
+			productReference = 52949123DAAE3C9FA426AA52 /* AdeUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		BC0144E687062D0621D08C50 /* Ade */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 969536480403AB03C8495086 /* Build configuration list for PBXNativeTarget "Ade" */;
+			buildPhases = (
+				DAEC607A79E3D74EFEE0C1E4 /* Sources */,
+				97C19D0F64459ECDEC90B696 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Ade;
+			packageProductDependencies = (
+			);
+			productName = Ade;
+			productReference = EB9039C3F3C28D6EC8B05401 /* Ade.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		D1762411893E91DD997B8DF7 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					872DF68BEA9DD3770CE29C09 = {
+						ProvisioningStyle = Automatic;
+						TestTargetID = BC0144E687062D0621D08C50;
+					};
+					BC0144E687062D0621D08C50 = {
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = BCA7F82495E1A37CA44190A3 /* Build configuration list for PBXProject "Ade" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 82600A104BDB536957054796;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = F6376CE76CB057B946B50ECB /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				BC0144E687062D0621D08C50 /* Ade */,
+				872DF68BEA9DD3770CE29C09 /* AdeUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		97C19D0F64459ECDEC90B696 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				11AC67143BC47452E020EFEB /* AppIcon.icns in Resources */,
+				B7F73AF7AD28B19C45D20CAA /* Resources in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		A3D9E43E73DFFD284C4CE81F /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				855FF77126130EA1CAE481D8 /* ExperienceTests.swift in Sources */,
+				7D157948566ECA37D636510A /* WorkflowTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		DAEC607A79E3D74EFEE0C1E4 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				276D3342E2AA89C9385B3C50 /* AdeApp.swift in Sources */,
+				085189F64BD4FB458D2F60E7 /* AppModel.swift in Sources */,
+				0BF606B0DAC5DA43F3C2A108 /* CatalogViews.swift in Sources */,
+				AB665A734887783EECBC95B3 /* DevelopmentFixtures.swift in Sources */,
+				7E5DAFF6156128387D169BCA /* DocumentViews.swift in Sources */,
+				8DC5882CD81AF901D147D53D /* Domain.swift in Sources */,
+				92033CE41A1985572301C01E /* EventViews.swift in Sources */,
+				09B0162F152032FC3887F787 /* LocalStore.swift in Sources */,
+				A027ABDA7A0D6C10627C784F /* NativePDF.swift in Sources */,
+				4BD9828E0F1A1A643ED0B09B /* OpeningSound.swift in Sources */,
+				B30AD68565317C13D6EC5A87 /* OverviewViews.swift in Sources */,
+				7FDDE7A6B59B2EC03D0CCD81 /* PaperAtmosphere.swift in Sources */,
+				A3DBB5C5FA80B25E426432F3 /* PaperControls.swift in Sources */,
+				DDCD3A0E61B0F85CD30B3770 /* PaperMotion.swift in Sources */,
+				CADC249AB1132AC00E4A3AF5 /* PaperScenes.swift in Sources */,
+				95B20FEC3E85D9DC50055C4D /* PersonParticipationView.swift in Sources */,
+				ACF02675E83511F463B6C77F /* ReportHistoryViews.swift in Sources */,
+				8ABCA6BF2DC778B1DAC68542 /* Rules.swift in Sources */,
+				819EB5E1371C18CDE7B790D5 /* Theme.swift in Sources */,
+				78A79D72C62AC334075496F7 /* UtilityViews.swift in Sources */,
+				57B567B5D8CA30205AA0A224 /* WelcomeExperience.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		BB4CEEC828E7C7FC83C30408 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = BC0144E687062D0621D08C50 /* Ade */;
+			targetProxy = 9FC023F9BD58E4FF8316BBD3 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		10376E31E053A5BDB16D2A5C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_ENTITLEMENTS = Ade.entitlements;
+				CODE_SIGN_INJECT_BASE_ENTITLEMENTS = NO;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 11;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SELECTED_FILES = readwrite;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Adê";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
+				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 0.3.2;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		88B47732D45FAE95DE305FD8 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_ENTITLEMENTS = Ade.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 11;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = NO;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SELECTED_FILES = readwrite;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Adê";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
+				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 0.3.2;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		8D6F246C7C754B5CE8DFAAA7 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				COMBINE_HIDPI_IMAGES = YES;
+				INFOPLIST_FILE = "Ade-Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.ade.mac;
+				PRODUCT_NAME = Ade;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		D82AA5CC4E098B7B11005010 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				COMBINE_HIDPI_IMAGES = YES;
+				INFOPLIST_FILE = "Ade-Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.ade.mac;
+				PRODUCT_NAME = Ade;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		EAE107C39C7F5925AEFD36EF /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.ade.mac.uitests;
+				SDKROOT = macosx;
+				TEST_TARGET_NAME = Ade;
+			};
+			name = Debug;
+		};
+		F60AB5ABB05F514B786A266F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.ade.mac.uitests;
+				SDKROOT = macosx;
+				TEST_TARGET_NAME = Ade;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		969536480403AB03C8495086 /* Build configuration list for PBXNativeTarget "Ade" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D82AA5CC4E098B7B11005010 /* Debug */,
+				8D6F246C7C754B5CE8DFAAA7 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		A39F3FF8F21D6EA09D8760E8 /* Build configuration list for PBXNativeTarget "AdeUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				EAE107C39C7F5925AEFD36EF /* Debug */,
+				F60AB5ABB05F514B786A266F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		BCA7F82495E1A37CA44190A3 /* Build configuration list for PBXProject "Ade" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				88B47732D45FAE95DE305FD8 /* Debug */,
+				10376E31E053A5BDB16D2A5C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = D1762411893E91DD997B8DF7 /* Project object */;
+}
