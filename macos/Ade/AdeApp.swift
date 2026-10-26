@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 @main struct AdeApp: App {
@@ -42,7 +43,9 @@ import SwiftUI
       ).font(
         .custom("Inter-Regular", size: 13)
       ).frame(minWidth: 1160, minHeight: 720)
-    }.defaultSize(width: 1280, height: 720)
+      .background(EdgeWindow())
+    }.windowStyle(.hiddenTitleBar)
+      .defaultSize(width: 1280, height: 720)
       .commands {
         CommandGroup(replacing: .newItem) {
           Button(model.t("Importar archivo…", "Import workspace…")) {
@@ -127,11 +130,10 @@ struct WorkspaceView: View {
         }
       }
     }.modifier(PaperAmbientLayout(scene: atmosphere))
-      .background(Enki.paper).foregroundStyle(Enki.ink)
+      .background(Enki.paper.ignoresSafeArea())
+      .foregroundStyle(Enki.ink)
       .overlay(alignment: .top) { PaperBusyIndicator(busy: model.busy) }
-      .overlay { Rectangle().strokeBorder(Enki.rule, lineWidth: 0.5) }
-      .modifier(PaperElevation())
-      .padding(18).background(Enki.outer)
+      .ignoresSafeArea()
       .environment(\.paperScene, atmosphere)
       .sheet(isPresented: Binding(get: { model.quickOpenRequested }, set: { model.quickOpenRequested = $0 })) {
         QuickOpen()
@@ -304,6 +306,30 @@ struct SpaceEditor: View {
         ).foregroundStyle(.secondary)
       }
     }
+  }
+}
+
+/// The workspace fills the window. No title-bar strip and no outer mat.
+private struct EdgeWindow: NSViewRepresentable {
+  func makeNSView(context: Context) -> NSView { NSView(frame: .zero) }
+  func updateNSView(_ view: NSView, context: Context) {
+    DispatchQueue.main.async { apply(view.window) }
+  }
+  private func apply(_ window: NSWindow?) {
+    guard let window else { return }
+    window.titleVisibility = .hidden
+    window.titlebarAppearsTransparent = true
+    window.titlebarSeparatorStyle = .none
+    window.styleMask.insert(.fullSizeContentView)
+    window.isMovableByWindowBackground = true
+    window.isOpaque = true
+    let theme = DayAppearance.shared.theme
+    let paper: UInt32 = theme.isNight ? (theme.isIndigo ? 0x0C1020 : 0x0F1113) : 0xFAFAF8
+    window.backgroundColor = NSColor(
+      srgbRed: CGFloat((paper >> 16) & 255) / 255,
+      green: CGFloat((paper >> 8) & 255) / 255,
+      blue: CGFloat(paper & 255) / 255,
+      alpha: 1)
   }
 }
 
