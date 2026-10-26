@@ -466,10 +466,19 @@ struct AttendanceView: View {
   var event: Activity
   @State private var query = ""
   @State private var note: RecordNote?
+  @State private var selectedPerson = ""
+  @FocusState private var rosterFocused: Bool
+  private var visiblePeople: [Person] {
+    guard let space = m.space else { return [] }
+    let people = Dictionary(uniqueKeysWithValues: space.people.map { ($0.id, $0) })
+    return event.participantIds.compactMap { people[$0] }.filter {
+      query.isEmpty || $0.name.localizedCaseInsensitiveContains(query)
+    }
+  }
   var body: some View {
     VStack(alignment: .leading, spacing: 0) {
       HStack(spacing: 12) {
-        Text("presente / (presente + ausente)").font(.custom(Enki.mono, size: 9))
+        Text(m.t("presente / (presente + ausente)", "present / (present + absent)")).font(.custom(Enki.mono, size: 9))
         Text(
           m.t(
             "Excusado y pendiente no cuentan. Cada marca conserva su historial.",
@@ -493,20 +502,34 @@ struct AttendanceView: View {
           .plain
         ).font(.custom(Enki.mono, size: 10)).padding(.vertical, 12)
       }
+      HStack {
+        MicroLabel(text: m.t("ELIGE UNA FILA · ↑ ↓ MOVER · P A E X MARCAR · N NOTA",
+                             "SELECT A ROW · ↑ ↓ MOVE · P A E X MARK · N NOTE"))
+        Spacer()
+      }.foregroundStyle(.secondary).padding(.vertical, 8)
+      ScrollViewReader { proxy in
       ScrollView {
         LazyVStack(spacing: 0) {
           if let s = m.space {
+            let people = Dictionary(uniqueKeysWithValues: s.people.map { ($0.id, $0) })
+            let records = Dictionary(uniqueKeysWithValues: s.attendance.filter { $0.eventId == event.id }.map { ($0.personId, $0) })
             ForEach(Array(event.participantIds.enumerated()), id: \.element) { index, id in
-              if let p = s.person(id),
+              if let p = people[id],
                 query.isEmpty || p.name.localizedCaseInsensitiveContains(query)
               {
-                let record = s.record(event.id, id) ?? Attendance(eventId: event.id, personId: id)
+                let record = records[id] ?? Attendance(eventId: event.id, personId: id)
                 VStack(alignment: .leading, spacing: 0) {
                   HStack(spacing: 14) {
                     Text(String(format: "%02d", index + 1)).font(.custom(Enki.mono, size: 8))
                       .foregroundStyle(Enki.accent).frame(width: 20, alignment: .leading)
-                    Text(p.name.uppercased()).font(.custom(Enki.display, size: 18)).lineLimit(2)
-                      .frame(maxWidth: .infinity, alignment: .leading)
+                    Button {
+                      selectedPerson = id
+                      rosterFocused = true
+                    } label: {
+                      Text(p.name.uppercased()).font(.custom(Enki.display, size: 18)).lineLimit(2)
+                        .frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
+                    }.buttonStyle(.plain).accessibilityIdentifier("attendance-row-" + id)
+                      .accessibilityAddTraits(selectedPerson == id ? .isSelected : [])
                     VStack(alignment: .leading, spacing: 3) {
                       Text(groups(s, id).uppercased()).font(.custom(Enki.mono, size: 7)).tracking(1)
                         .foregroundStyle(Enki.ink.opacity(0.65)).lineLimit(1)
@@ -529,18 +552,36 @@ struct AttendanceView: View {
                     }.frame(width: 14).opacity(0.65).disabled(
                       !m.canEdit || !event.canRecord
                     ).help(m.t("Notas y estado pendiente", "Notes and pending state"))
-                  }.padding(.vertical, 11)
+                  }.padding(.vertical, 11).padding(.leading, 6)
                   if !record.notes.isEmpty {
                     Text(record.notes).font(.caption).foregroundStyle(.secondary).textSelection(
                       .enabled
                     ).padding(.leading, 34).padding(.bottom, 10)
                   }
                   PaperRule()
-                }
+                }.background(selectedPerson == id ? Enki.accent.opacity(0.065) : .clear)
+                  .overlay(alignment: .leading) {
+                    if selectedPerson == id { Rectangle().fill(Enki.accent).frame(width: 2) }
+                  }.id(id)
               }
             }
           }
         }
+      }.focusable().focusEffectDisabled().focused($rosterFocused)
+        .onKeyPress(.downArrow) { move(1); return .handled }
+        .onKeyPress(.upArrow) { move(-1); return .handled }
+        .onKeyPress(characters: CharacterSet(charactersIn: "paexnPAEXN")) { key in
+          guard rosterFocused, m.canEdit, event.canRecord,
+            let person = visiblePeople.first(where: { $0.id == selectedPerson }),
+            let space = m.space else { return .ignored }
+          let record = space.record(event.id, person.id) ?? Attendance(eventId: event.id, personId: person.id)
+          if key.characters.lowercased() == "n" { note = RecordNote(attendance: record); return .handled }
+          let states: [String: AttendanceStatus] = ["p": .present, "a": .absent, "e": .excused, "x": .pending]
+          guard let state = states[key.characters.lowercased()] else { return .ignored }
+          set(state, record, person, advance: true)
+          return .handled
+        }
+        .onChange(of: selectedPerson) { proxy.scrollTo(selectedPerson) }
       }
       if event.participantIds.isEmpty {
         EmptyState(
@@ -555,12 +596,24 @@ struct AttendanceView: View {
     s.groups.filter { s.member(person, group: $0.id, on: event.date) }.map(\.name).joined(
       separator: ", ")
   }
-  private func set(_ value: AttendanceStatus, _ old: Attendance, _ p: Person) {
+  private func move(_ delta: Int) {
+    let people = visiblePeople
+    guard !people.isEmpty else { return }
+    let index = people.firstIndex { $0.id == selectedPerson }
+    selectedPerson = people[min(people.count - 1, max(0, (index ?? (delta > 0 ? -1 : 1)) + delta))].id
+  }
+  private func set(_ value: AttendanceStatus, _ old: Attendance, _ p: Person, advance: Bool = false) {
+    selectedPerson = p.id
+    if old.status == value {
+      if advance { move(1) }
+      return
+    }
     var changed = old
     changed.status = value
     Task {
-      _ = await m.edit(
+      let saved = await m.edit(
         .attendance(changed), label: "Asistencia: \(p.name) · \(m.status(value.rawValue))")
+      if saved && advance && selectedPerson == p.id { move(1) }
     }
   }
   private func attendanceButton(_ state: AttendanceStatus, _ record: Attendance, _ person: Person)

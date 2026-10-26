@@ -19,7 +19,7 @@ enum Edit {
 enum Collection: String, CaseIterable {
   case people, groups, memberships, periods, components, categories, templates, events
 }
-struct ReportFilter {
+struct ReportFilter: Hashable {
   var periodId = ""
   var groupId = ""
   var componentId = ""
@@ -258,30 +258,14 @@ enum Rules {
   static func participation(_ s: Space, person: String, filter f: ReportFilter = .init()) throws
     -> Participation
   {
-    try require(s.person(person) != nil, "Persona inexistente")
-    let period = s.periods.first { $0.id == f.periodId }
-    try require(f.periodId.isEmpty || period != nil, "Período inexistente")
-    try require(f.groupId.isEmpty || s.groups.contains { $0.id == f.groupId }, "Grupo inexistente")
-    var r = Participation()
-    for e in s.events where e.participantIds.contains(person) {
-      if let p = period, e.date < p.start || e.date > p.end { continue }
-      if !f.groupId.isEmpty && !s.member(person, group: f.groupId, on: e.date) { continue }
-      if !f.componentId.isEmpty && e.componentId != f.componentId { continue }
-      if !f.categoryId.isEmpty && e.categoryId != f.categoryId { continue }
-      if !f.eventId.isEmpty && e.id != f.eventId { continue }
-      if f.uncategorized && e.categoryId != nil { continue }
-      if !e.canRecord || !e.countsForAttendance {
-        r.excluded += 1
-        continue
-      }
-      switch s.record(e.id, person)?.status ?? .pending {
-      case .present: r.present += 1
-      case .absent: r.absent += 1
-      case .excused: r.excused += 1
-      case .pending: r.pending += 1
-      }
-    }
-    return r
+    try ParticipationIndex(s).participation(person: person, filter: f)
+  }
+  /// Reuses one index for an entire report; searching the UI never recalculates records.
+  static func report(_ s: Space, filter: ReportFilter = .init()) throws -> [String: Participation] {
+    let index = ParticipationIndex(s)
+    var result: [String: Participation] = [:]
+    for person in s.people { result[person.id] = try index.participation(person: person.id, filter: filter) }
+    return result
   }
   /// Every subtotal is evaluated from records, never by averaging rounded percentages.
   /// Period/group scope is identical across the total, components and their categories.
@@ -289,11 +273,12 @@ enum Rules {
     _ s: Space, person: String, period: String = "",
     group: String = ""
   ) throws -> [ParticipationSlice] {
+    let index = ParticipationIndex(s)
     let scope = ReportFilter(periodId: period, groupId: group)
     var rows = [
       ParticipationSlice(
         id: "overall", name: "", kind: .overall,
-        result: try participation(s, person: person, filter: scope))
+        result: try index.participation(person: person, filter: scope))
     ]
     for component in s.components {
       var filter = scope
@@ -302,14 +287,14 @@ enum Rules {
         ParticipationSlice(
           id: "component-" + component.id, name: component.name,
           kind: .component, componentId: component.id,
-          result: try participation(s, person: person, filter: filter)))
+          result: try index.participation(person: person, filter: filter)))
       for category in s.categories where category.componentId == component.id {
         filter.categoryId = category.id
         rows.append(
           ParticipationSlice(
             id: "category-" + category.id, name: category.name,
             kind: .category, componentId: component.id,
-            result: try participation(s, person: person, filter: filter)))
+            result: try index.participation(person: person, filter: filter)))
       }
       filter.categoryId = ""
       filter.uncategorized = true
@@ -317,7 +302,7 @@ enum Rules {
         ParticipationSlice(
           id: "uncategorized-" + component.id, name: "",
           kind: .uncategorized, componentId: component.id,
-          result: try participation(s, person: person, filter: filter)))
+          result: try index.participation(person: person, filter: filter)))
     }
     return rows
   }
@@ -541,8 +526,7 @@ extension Rules {
   /// Aggregate records, not an average of per-person percentages.
   static func aggregate(_ space: Space, filter: ReportFilter = .init()) throws -> Participation {
     var total = Participation()
-    for person in space.people {
-      let r = try participation(space, person: person.id, filter: filter)
+    for r in try report(space, filter: filter).values {
       total.present += r.present
       total.absent += r.absent
       total.pending += r.pending
@@ -550,5 +534,53 @@ extension Rules {
       total.excluded += r.excluded
     }
     return total
+  }
+}
+
+/// Immutable read index. The event roster remains the source of eligibility; missing records
+/// are pending, and membership is evaluated at the event date, never at today's date.
+struct ParticipationIndex {
+  private let space: Space
+  private let people: Set<String>
+  private let events: [String: [Activity]]
+  private let records: [String: [String: AttendanceStatus]]
+  private let memberships: [String: [Membership]]
+  init(_ space: Space) {
+    self.space = space
+    people = Set(space.people.map(\.id))
+    var events: [String: [Activity]] = [:]
+    for event in space.events {
+      for person in event.participantIds { events[person, default: []].append(event) }
+    }
+    self.events = events
+    var records: [String: [String: AttendanceStatus]] = [:]
+    for record in space.attendance { records[record.personId, default: [:]][record.eventId] = record.status }
+    self.records = records
+    memberships = Dictionary(grouping: space.memberships, by: \.personId)
+  }
+  func participation(person: String, filter f: ReportFilter = .init()) throws -> Participation {
+    try require(people.contains(person), "Persona inexistente")
+    let period = space.periods.first { $0.id == f.periodId }
+    try require(f.periodId.isEmpty || period != nil, "Período inexistente")
+    try require(f.groupId.isEmpty || space.groups.contains { $0.id == f.groupId }, "Grupo inexistente")
+    var result = Participation()
+    for event in events[person] ?? [] {
+      if let period, event.date < period.start || event.date > period.end { continue }
+      if !f.groupId.isEmpty && !(memberships[person] ?? []).contains(where: {
+        $0.groupId == f.groupId && $0.start <= event.date && ($0.end == nil || $0.end! >= event.date)
+      }) { continue }
+      if !f.componentId.isEmpty && event.componentId != f.componentId { continue }
+      if !f.categoryId.isEmpty && event.categoryId != f.categoryId { continue }
+      if !f.eventId.isEmpty && event.id != f.eventId { continue }
+      if f.uncategorized && event.categoryId != nil { continue }
+      if !event.canRecord || !event.countsForAttendance { result.excluded += 1; continue }
+      switch records[person]?[event.id] ?? .pending {
+      case .present: result.present += 1
+      case .absent: result.absent += 1
+      case .excused: result.excused += 1
+      case .pending: result.pending += 1
+      }
+    }
+    return result
   }
 }

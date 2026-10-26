@@ -2,8 +2,8 @@ import SwiftUI
 
 /// Short, interruptible motion. No animation drives a model change or waits for a save.
 enum PaperMotion {
-  static let response = Animation.spring(response: 0.28, dampingFraction: 0.86)
-  static let navigation = Animation.spring(response: 0.38, dampingFraction: 0.92)
+  static let response = Animation.spring(response: 0.22, dampingFraction: 0.88)
+  static let navigation = Animation.spring(response: 0.25, dampingFraction: 0.94)
   static let arrival = Animation.easeOut(duration: 0.28)
 }
 
@@ -31,14 +31,14 @@ struct MotionAccessibility: ViewModifier {
   }
 }
 
-/// Keeps a single live view, including its focus, draft and selection, during navigation.
+/// Navigation remains readable even when an arrival is interrupted or its task is cancelled.
 struct PaperArrival: ViewModifier {
   var trigger: String
   @Environment(\.paperReduceMotion) private var reduced
-  @State private var settled = false
+  @State private var settled = true
   func body(content: Content) -> some View {
-    content.opacity(reduced || settled ? 1 : 0)
-      .offset(y: reduced || settled ? 0 : 9)
+    content
+      .offset(y: reduced || settled ? 0 : 3)
       .task(id: trigger) {
         guard !reduced else {
           settled = true
@@ -47,9 +47,10 @@ struct PaperArrival: ViewModifier {
         var reset = Transaction()
         reset.disablesAnimations = true
         withTransaction(reset) { settled = false }
-        // One presentation frame, cancelled automatically by the next navigation.
-        do { try await Task.sleep(for: .milliseconds(16)) } catch { return }
-        guard !Task.isCancelled else { return }
+        do { try await Task.sleep(for: .milliseconds(16)) } catch {
+          settled = true
+          return
+        }
         withAnimation(PaperMotion.arrival) { settled = true }
       }
       .onChange(of: reduced) { if reduced { settled = true } }

@@ -60,18 +60,28 @@ struct SceneInk: View {
           ]), startPoint: .zero, endPoint: bottom))
       var dots = Path()
       let step = 4.0
+      // Column waves are shared by every row. Trigonometry runs per row/column,
+      // rather than four times for each dot (thousands of evaluations per frame).
+      struct Column { let x: Double; let tide: Double; let sine: Double; let cosine: Double }
+      let columns = (0...1).map { parity in
+        (0...Int(size.width / step)).map { column in
+          let x = Double(column) * step + Double(parity) * step / 2
+          return Column(x: x,
+            tide: 0.28 + amplitude * sin(x / 145 - phase / 40)
+              + amplitude * 0.6 * sin(x / 310 + phase / 60),
+            sine: sin(x / 95), cosine: cos(x / 95))
+        }
+      }
       for row in 0...Int(size.height / step) {
         let y = Double(row) * step
         let v = y / size.height
-        // Smooth fade gives the top of the reserved band no visible edge.
         let fade = v * v * (3 - 2 * v)
-        for column in 0...Int(size.width / step) {
-          let x = Double(column) * step + (row.isMultiple(of: 2) ? 0 : step / 2)
-          let tide = 0.28
-            + amplitude * sin(x / 145 - phase / 40)
-            + amplitude * 0.6 * sin(x / 310 + phase / 60)
-          let depth = max(0, min(1, (v - tide) / 0.72))
-          let current = 0.82 + 0.18 * sin(x / 95 + v * 5 - phase / 30)
+        let rowPhase = v * 5 - phase / 30
+        let rowSine = sin(rowPhase), rowCosine = cos(rowPhase)
+        for column in columns[row % 2] {
+          let x = column.x
+          let depth = max(0, min(1, (v - column.tide) / 0.72))
+          let current = 0.82 + 0.18 * (column.sine * rowCosine + column.cosine * rowSine)
           let density = depth * depth * (3 - 2 * depth) * fade * current
           let radius = 1.65 * sqrt(density)
           guard radius > 0.12 else { continue }

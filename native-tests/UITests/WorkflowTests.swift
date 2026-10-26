@@ -1,6 +1,55 @@
 import XCTest
 
 final class WorkflowTests: XCTestCase {
+  @MainActor func testCatalogNavigationOrder() throws {
+    let app = XCUIApplication()
+    app.launchEnvironment["ADE_UI_TEST_RUN"] = UUID().uuidString
+    app.launchArguments = ["-ade-locale", "es", "-ade-author", "Prueba catálogo"]
+    app.launch()
+    app.activate()
+    continueAfterFailure = false
+    func click(_ id: String) {
+      let button = app.buttons.matching(
+        NSPredicate(format: "identifier == %@ OR label ==[c] %@", id, id)
+      ).firstMatch
+      XCTAssertTrue(button.waitForExistence(timeout: 10), "Missing \(id)")
+      XCTAssertTrue(button.isHittable, "Invisible control \(id)")
+      button.click()
+    }
+    click("new-space")
+    let name = app.textFields["field-name"].firstMatch
+    XCTAssertTrue(name.waitForExistence(timeout: 5))
+    name.click()
+    name.typeText("Prueba navegación")
+    click("sheet-save")
+    XCTAssertTrue(app.sheets.firstMatch.waitForNonExistence(timeout: 10))
+    let kinds = ["people": "person", "groups": "group", "periods": "period"]
+    // All ordered pairs, with repeated presentations, cancellation and saving.
+    for (index, tab) in ["people", "groups", "periods", "people", "periods", "groups", "people"].enumerated() {
+      click("nav-" + tab)
+      click("add-" + kinds[tab]!)
+      XCTAssertTrue(app.sheets.firstMatch.waitForExistence(timeout: 5))
+      XCTAssertEqual(app.textFields["field-email"].exists, tab == "people", "Wrong editor after navigating to \(tab)")
+      XCTAssertEqual(app.buttons["calendar-Desde"].exists, tab == "periods", "Wrong dates after navigating to \(tab)")
+      let field = app.textFields["field-name"].firstMatch
+      XCTAssertEqual(field.value as? String, "", "Draft leaked from another catalog")
+      field.click()
+      field.typeText("Registro \(index)")
+      click("Cancelar")
+      XCTAssertTrue(app.sheets.firstMatch.waitForNonExistence(timeout: 5))
+      click("add-" + kinds[tab]!)
+      XCTAssertTrue(app.sheets.firstMatch.waitForExistence(timeout: 5))
+      XCTAssertEqual(field.value as? String, "", "Cancelled draft was reused")
+      field.click()
+      field.typeText("Registro \(index)")
+      click("sheet-save")
+      XCTAssertTrue(app.sheets.firstMatch.waitForNonExistence(timeout: 10))
+      let row = app.staticTexts["Registro \(index)"].firstMatch
+      XCTAssertTrue(row.waitForExistence(timeout: 5), "Saved record missing in \(tab)")
+      XCTAssertGreaterThan(row.frame.width, 50)
+      XCTAssertLessThan(row.frame.height, 60)
+    }
+  }
   @MainActor func testNativeActivityCycle() throws {
     let app = XCUIApplication()
     app.launchEnvironment["ADE_UI_TEST_RUN"] = UUID().uuidString
@@ -47,11 +96,11 @@ final class WorkflowTests: XCTestCase {
     save()
     nav("Personas")
     click("add-person")
-    field("Nombre", "Persona A")
+    field("Nombre", "Ana Pérez")
     field("Correo", "ana@example.org")
     save()
     click("add-person")
-    field("Nombre", "Persona B")
+    field("Nombre", "Beatriz")
     save()
     nav("Eventos")
     click("event-new")
@@ -64,12 +113,12 @@ final class WorkflowTests: XCTestCase {
     let candidate = app.buttons["volunteer-candidate"]
     XCTAssertTrue(candidate.waitForExistence(timeout: 5))
     candidate.click()
-    app.buttons["Persona A"].click()
+    app.buttons["Ana Pérez"].click()
     click("Registrar interés")
     click("Seleccionar")
     app.descendants(matching: .any)["event-actions"].firstMatch.click()
     app.buttons["Asistencia"].click()
-    let present = app.buttons["Presente · Persona A"].firstMatch
+    let present = app.buttons["Presente · Ana Pérez"].firstMatch
     XCTAssertTrue(present.waitForExistence(timeout: 5), app.debugDescription)
     present.click()
     nav("Resultados")
@@ -111,7 +160,7 @@ final class WorkflowTests: XCTestCase {
     open.click()
     nav("Personas")
     XCTAssertTrue(
-      app.staticTexts["Persona A"].firstMatch.waitForExistence(timeout: 10),
+      app.staticTexts["Ana Pérez"].firstMatch.waitForExistence(timeout: 10),
       "Native data must persist across launch")
     XCTAssertEqual(app.webViews.count, 0, "No web renderer")
   }

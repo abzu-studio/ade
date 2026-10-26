@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build a local DMG or sign and notarize a Developer ID distribution."""
+"""Build an audited DMG, with explicit unsigned-preview or notarized distribution modes."""
 import argparse
 import hashlib
 import json
@@ -85,7 +85,8 @@ def package(args):
         matches = re.findall(r'([A-Fa-f0-9]{40}) "(Developer ID Application:[^"]+)"', identities)
         if not any(args.identity in (sha, name) for sha, name in matches):
             raise ValueError('A valid Developer ID Application certificate with its private key is required')
-    output = ROOT / 'dist' / ('release' if signed else 'local')
+    preview = args.command == 'preview'
+    output = ROOT / 'dist' / ('release' if signed else 'preview' if preview else 'local')
     output.mkdir(parents=True, exist_ok=True)
     # Each attempt remains isolated, including incomplete notarization submissions.
     attempt = pathlib.Path(tempfile.mkdtemp(prefix='package-', dir=ROOT / 'build'))
@@ -113,7 +114,7 @@ def package(args):
     build = info['CFBundleVersion']
     if not re.fullmatch(r'[0-9.]+', version) or not re.fullmatch(r'[0-9]+', build):
         raise ValueError('Invalid distribution version')
-    suffix = '' if signed else '-local'
+    suffix = '' if signed else '-unsigned' if preview else '-local'
     name = f'Ade-{version}-{build}{suffix}.dmg'
     if signed:
         print('Notarizing application…', flush=True)
@@ -124,6 +125,17 @@ def package(args):
         run('xcrun', 'stapler', 'validate', app)
         run('spctl', '--assess', '--type', 'execute', app)
     (stage / 'Applications').symlink_to('/Applications')
+    if preview:
+        (stage / 'Instalación.txt').write_text(
+            'Adê ' + version + ' (' + build + ') — macOS 14+\n\n'
+            'Arrastra Adê a Aplicaciones. Reemplazar la app conserva sus datos locales.\n'
+            'Esta edición usa firma ad hoc; no tiene Developer ID ni notarización de Apple.\n'
+            'macOS puede bloquear su primera apertura. Consulta las instrucciones de Apple:\n'
+            'https://support.apple.com/es-es/102445\n\n'
+            'Drag Adê to Applications. Replacing the app preserves its local data.\n'
+            'This preview is ad-hoc signed, without Developer ID or Apple notarization.\n'
+            'macOS may block its first launch. Apple instructions:\n'
+            'https://support.apple.com/en-us/102445\n', encoding='utf-8')
     image = attempt / name
     run('hdiutil', 'create', '-volname', 'Adê', '-srcfolder', stage,
         '-format', 'UDZO', '-fs', 'HFS+', image)
@@ -139,13 +151,14 @@ def package(args):
     os.replace(image, destination)
     digest = hashlib.sha256(destination.read_bytes()).hexdigest()
     (output / (name + '.sha256')).write_text(digest + '  ' + name + '\n')
-    print(('Notarized distribution: ' if signed else 'Local package (not notarized): ') + str(destination))
+    print(('Notarized distribution: ' if signed else 'Package (not notarized): ') + str(destination))
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest='command', required=True)
     commands.add_parser('local', help='Build an ad-hoc signed DMG for local verification')
+    commands.add_parser('preview', help='Build a public preview DMG explicitly marked as not notarized')
     release = commands.add_parser('distribute', help='Build, sign, notarize and verify a public DMG')
     release.add_argument('--identity', required=True, help='Developer ID Application name or SHA-1')
     release.add_argument('--notary-profile', required=True, help='Existing notarytool Keychain profile')

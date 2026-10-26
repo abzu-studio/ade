@@ -140,6 +140,14 @@ struct DocumentsView: View {
       }
     }
     .onChange(of: selected) { invalidatePreview() }
+    .onChange(of: m.branch?.heads) {
+      invalidatePreview()
+      guard let space = m.space else { return }
+      if !space.templates.contains(where: { $0.id == selected }) { selected = nil }
+      if !space.events.contains(where: { $0.id == eventId }) { eventId = "" }
+      if space.event(eventId)?.participantIds.contains(personId) != true { personId = "" }
+      if !space.periods.contains(where: { $0.id == periodId }) { periodId = "" }
+    }
     .onChange(of: m.selectedSpace) {
       selected = nil
       eventId = ""
@@ -151,9 +159,11 @@ struct DocumentsView: View {
   private func invalidatePreview() {
     requestID = UUID()
     pdf = nil
+    generatedRevision = ""
     generating = false
   }
   private func generate(_ s: Space, _ t: DocumentTemplate) {
+    invalidatePreview()
     let request = UUID()
     requestID = request
     generating = true
@@ -165,7 +175,8 @@ struct DocumentsView: View {
         let data = try await Task.detached {
           try NativePDF.generate(space: s, template: t, options: options)
         }.value
-        guard requestID == request else { return }
+        guard requestID == request, m.selectedSpace == s.id,
+          m.branch?.heads == [options.revisionId] else { return }
         pdf = data
         generatedRevision = options.revisionId
       } catch { if requestID == request { m.error = error.localizedDescription } }

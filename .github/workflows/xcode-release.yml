@@ -1,0 +1,101 @@
+name: Xcode DMG release
+on:
+  push:
+    branches: [codex/release-041-clean]
+    paths:
+      - 'macos/**'
+      - 'native-tests/**'
+      - 'scripts/package-mac.py'
+      - 'scripts/audit-source.py'
+      - 'scripts/verify-toolchain.sh'
+      - '.github/workflows/xcode-release.yml'
+      - 'docs/RELEASE-0.4.1.md'
+permissions:
+  contents: read
+concurrency:
+  group: xcode-dmg-041
+  cancel-in-progress: true
+jobs:
+  withdraw-previous-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - name: Withdraw only the preview built with the previous compiler
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          previous="$(gh release view v0.4.1 --repo "$GITHUB_REPOSITORY" --json targetCommitish,isPrerelease --jq 'if .isPrerelease then .targetCommitish else "unexpected-stable-release" end')"
+          test "$previous" = '1779cc136b0f7e0e925f2ddef07a19740ef31203'
+          gh release edit v0.4.1 --repo "$GITHUB_REPOSITORY" --draft
+  package:
+    runs-on: xcode-27
+    timeout-minutes: 30
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_27.0.0.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify exact local toolchain
+        run: bash scripts/verify-toolchain.sh
+      - name: Audit publication tree
+        run: python3 scripts/audit-source.py
+      - name: Verify rules, persistence, privacy defaults and PDF output
+        run: ./scripts/test-native.sh
+      - name: Build and verify universal DMG
+        run: python3 scripts/package-mac.py preview
+      - name: Archive corresponding source and provenance
+        shell: bash
+        run: |
+          set -euo pipefail
+          git archive --format=zip --prefix=Ade-0.4.1/ -o dist/preview/Ade-0.4.1-source.zip "$GITHUB_SHA" \
+            macos native-tests scripts/test-native.sh scripts/package-mac.py scripts/audit-source.py \
+            scripts/generate-opening-sound.py scripts/verify-toolchain.sh docs/BUILD-XCODE.md docs/ARCHITECTURE-XCODE.md \
+            docs/RULES-XCODE.md docs/DISTRIBUTION.md docs/RELEASE-0.4.1.md \
+            LICENSE PRIVACY.md THIRD_PARTY_NOTICES.md .gitignore
+          printf 'Adê 0.4.1 (15)\nCommit: %s\nBuild: https://github.com/%s/actions/runs/%s\nSigning: ad hoc, not Apple notarized\n' \
+            "$GITHUB_SHA" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" > dist/preview/BUILD.txt
+          xcodebuild -version >> dist/preview/BUILD.txt
+          xcrun swift --version >> dist/preview/BUILD.txt
+          cp docs/RELEASE-0.4.1.md dist/preview/RELEASE.md
+          cd dist/preview
+          shasum -a 256 Ade-0.4.1-15-unsigned.dmg Ade-0.4.1-source.zip > SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xcode-release-041
+          path: |
+            dist/preview/Ade-0.4.1-15-unsigned.dmg
+            dist/preview/Ade-0.4.1-source.zip
+            dist/preview/SHA256SUMS.txt
+            dist/preview/BUILD.txt
+            dist/preview/RELEASE.md
+          if-no-files-found: error
+          retention-days: 7
+  publish:
+    needs: [package, withdraw-previous-preview]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: xcode-release-041
+          path: release
+      - name: Verify files and publish the pinned-toolchain prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd release
+          sha256sum --check SHA256SUMS.txt
+          # Replace only this withdrawn preview, after the new package passes every check.
+          previous="$(gh release view v0.4.1 --repo "$GITHUB_REPOSITORY" --json targetCommitish,isDraft,isPrerelease --jq 'if .isDraft and .isPrerelease then .targetCommitish else "unexpected-release" end')"
+          test "$previous" = '1779cc136b0f7e0e925f2ddef07a19740ef31203'
+          gh release delete v0.4.1 --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag
+          gh release create v0.4.1 --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            --prerelease --latest=false --title 'Adê 0.4.1 — macOS · SwiftUI/Xcode' \
+            --notes-file RELEASE.md \
+            Ade-0.4.1-15-unsigned.dmg Ade-0.4.1-source.zip SHA256SUMS.txt BUILD.txt

@@ -43,6 +43,29 @@ final class ExperienceTests: XCTestCase {
     add(image)
   }
 
+  @MainActor func testDocumentPreviewInvalidatesAfterUndo() {
+    let app = launch()
+    click(app, "load-demo")
+    click(app, "nav-documents")
+    let template = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "template-")).firstMatch
+    XCTAssertTrue(template.waitForExistence(timeout: 5))
+    template.click()
+    click(app, "Editar plantilla")
+    click(app, "sheet-save")
+    XCTAssertTrue(app.sheets.firstMatch.waitForNonExistence(timeout: 10))
+    click(app, "document-event")
+    click(app, "Lab 4 · PCR")
+    click(app, "Generar vista previa")
+    let save = app.buttons.matching(NSPredicate(format: "label ==[c] %@", "Guardar PDF…")).firstMatch
+    XCTAssertTrue(save.waitForExistence(timeout: 10))
+    let ready = XCTNSPredicateExpectation(predicate: NSPredicate(format: "enabled == true"), object: save)
+    XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: 15), .completed)
+    click(app, "history-undo")
+    let invalidated = XCTNSPredicateExpectation(predicate: NSPredicate(format: "enabled == false"), object: save)
+    XCTAssertEqual(XCTWaiter.wait(for: [invalidated], timeout: 10), .completed,
+                   "A PDF from an obsolete revision must not remain exportable")
+  }
+
   @MainActor func testAudiovisualOpeningReplayAndPersistence() {
     let app = launch(welcome: true)
     XCTAssertTrue(app.buttons["welcome-skip"].waitForExistence(timeout: 5), app.debugDescription)
@@ -308,4 +331,36 @@ final class ExperienceTests: XCTestCase {
     capture(app, "Scene - spaces")
     XCTAssertEqual(app.webViews.count, 0)
   }
+  @MainActor func testQuickOpenAndKeyboardAttendance() {
+    let app = launch()
+    click(app, "load-demo")
+    app.typeKey("k", modifierFlags: .command)
+    let search = app.textFields["quick-open-search"]
+    XCTAssertTrue(search.waitForExistence(timeout: 5), app.debugDescription)
+    search.typeText("lab 4")
+    XCTAssertTrue(app.buttons["quick-open-event-event-0"].waitForExistence(timeout: 5))
+    capture(app, "Rewrite - Quick Open")
+    search.typeKey(.return, modifierFlags: [])
+    XCTAssertTrue(app.buttons["attendance-row-person-2"].waitForExistence(timeout: 5))
+    click(app, "attendance-row-person-2")
+    app.typeKey("p", modifierFlags: [])
+    XCTAssertTrue(app.staticTexts["100%"].waitForExistence(timeout: 8), app.debugDescription)
+    app.typeKey("a", modifierFlags: [])
+    XCTAssertTrue(app.staticTexts["86%"].waitForExistence(timeout: 8), app.debugDescription)
+    XCTAssertEqual(app.buttons["attendance-person-3-absent"].value as? String, "Seleccionado")
+    capture(app, "Rewrite - Keyboard attendance")
+    app.typeKey("k", modifierFlags: .command)
+    XCTAssertTrue(search.waitForExistence(timeout: 5))
+    search.typeText("Persona 01")
+    search.typeKey(.return, modifierFlags: [])
+    XCTAssertTrue(app.staticTexts["person-report-total"].waitForExistence(timeout: 5))
+    XCTAssertEqual(text(app, "person-report-total"), "100.0%")
+    click(app, "person-report-close")
+    app.typeKey(.escape, modifierFlags: [])
+    XCTAssertTrue(search.waitForNonExistence(timeout: 5))
+    app.typeKey("7", modifierFlags: .command)
+    XCTAssertTrue(app.buttons["result-person-person-0"].waitForExistence(timeout: 8))
+    XCTAssertEqual(app.webViews.count, 0)
+  }
+
 }

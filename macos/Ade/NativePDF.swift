@@ -63,7 +63,8 @@ enum NativePDF {
     try require(o.periodId.isEmpty || period != nil, "Período inexistente")
     let filter =
       o.periodId.isEmpty ? ReportFilter(eventId: event.id) : ReportFilter(periodId: o.periodId)
-    let result = try person.map { try Rules.participation(space, person: $0.id, filter: filter) }
+    let index = ParticipationIndex(space)
+    let result = try person.map { try index.participation(person: $0.id, filter: filter) }
     let values: [String: String] = [
       "space.name": space.name, "space.timeZone": space.timeZone, "event.name": event.name,
       "event.date": event.date, "event.time": event.time, "event.status": event.status.rawValue,
@@ -136,9 +137,9 @@ enum NativePDF {
       case .pageBreak: newPage()
       case .participants:
         text("Participantes / Participants", size: 15)
-        for id in event.participantIds {
+        for id in (o.personId.isEmpty ? event.participantIds : [o.personId]) {
           guard let p = space.person(id) else { continue }
-          let r = try Rules.participation(space, person: id, filter: filter)
+          let r = try index.participation(person: id, filter: filter)
           columns(
             p.name + (p.email.isEmpty ? "" : "\n" + p.email),
             "\(space.record(event.id,id)?.status.rawValue ?? "pending") · \(r.present)/\(r.denominator) · \(r.formatted)"

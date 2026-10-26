@@ -12,7 +12,7 @@ import SwiftUI
           "AdeUITests-" + run, isDirectory: true)
       }
     #endif
-    _model = State(initialValue: AppModel(directory: testDirectory))
+    _model = State(initialValue: AppModel(directory: testDirectory, preferences: DayAppearance.shared.preferenceStore))
   }
   var body: some Scene {
     Window("Adê", id: "workspace") {
@@ -51,6 +51,17 @@ import SwiftUI
             model.busy || model.pending != nil)
           Button(model.t("Exportar archivo…", "Export workspace…")) { model.exportWorkspace() }
             .keyboardShortcut("e", modifiers: [.command, .shift])
+        }
+        CommandMenu(model.t("Navegar", "Navigate")) {
+          Button(model.t("Apertura rápida…", "Quick Open…")) { model.quickOpenRequested = true }
+            .keyboardShortcut("k").disabled(model.loading)
+          Button(model.t("Tus espacios", "Your spaces")) { model.showSpaces = true }
+            .keyboardShortcut("h", modifiers: [.command, .shift])
+          ForEach(Array(AppSection.navigation.prefix(9).enumerated()), id: \.element.id) { index, section in
+            Button(section.title(model)) { model.navigate(section) }
+              .keyboardShortcut(KeyEquivalent(Character(String(index + 1))), modifiers: .command)
+              .disabled(model.space == nil)
+          }
         }
         CommandGroup(after: .appInfo) {
           Button(model.t("Configuración de Adê", "Adê Settings")) { model.navigate(.settings) }
@@ -122,6 +133,9 @@ struct WorkspaceView: View {
       .modifier(PaperElevation())
       .padding(18).background(Enki.outer)
       .environment(\.paperScene, atmosphere)
+      .sheet(isPresented: Binding(get: { model.quickOpenRequested }, set: { model.quickOpenRequested = $0 })) {
+        QuickOpen()
+      }
       .sheet(isPresented: $newSpace) { SpaceEditor() }
       .confirmationDialog(
         model.t("¿Restaurar la copia anterior?", "Restore previous backup?"), isPresented: $repair,
@@ -196,6 +210,8 @@ struct WorkspaceView: View {
         ).padding(.horizontal, 8)
       }
       VStack(alignment: .leading, spacing: 12) {
+        Button(model.t("Buscar · ⌘K", "Search · ⌘K")) { model.quickOpenRequested = true }
+          .accessibilityIdentifier("quick-open").buttonStyle(ActionLink())
         Button(model.t("← Espacios", "← Spaces")) { model.showSpaces = true }
           .accessibilityIdentifier("spaces-home").buttonStyle(ActionLink())
         Button(model.t("Nuevo espacio…", "New space…")) { newSpace = true }.buttonStyle(
@@ -253,7 +269,9 @@ struct WorkspaceView: View {
     switch model.section {
     case .summary: OverviewView()
     case .events: EventsView()
-    case .people, .groups, .periods, .classification: CatalogView(section: model.section)
+    case .people, .groups, .periods, .classification:
+      CatalogView(section: model.section)
+        .id(model.selectedSpace + ":" + model.section.rawValue)
     case .results: ResultsView()
     case .documents: DocumentsView()
     case .history: HistoryView()
