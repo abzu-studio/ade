@@ -16,6 +16,20 @@ concurrency:
   group: xcode-dmg-041
   cancel-in-progress: true
 jobs:
+  withdraw-previous-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - name: Withdraw only the preview built with the previous compiler
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          previous="$(gh release view v0.4.1 --repo "$GITHUB_REPOSITORY" --json targetCommitish,isPrerelease --jq 'if .isPrerelease then .targetCommitish else "unexpected-stable-release" end')"
+          test "$previous" = '1779cc136b0f7e0e925f2ddef07a19740ef31203'
+          gh release edit v0.4.1 --repo "$GITHUB_REPOSITORY" --draft
   package:
     runs-on: xcode-27
     timeout-minutes: 30
@@ -59,7 +73,7 @@ jobs:
           if-no-files-found: error
           retention-days: 7
   publish:
-    needs: package
+    needs: [package, withdraw-previous-preview]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -69,7 +83,7 @@ jobs:
         with:
           name: xcode-release-041
           path: release
-      - name: Verify files and publish immutable prerelease
+      - name: Verify files and publish the pinned-toolchain prerelease
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
@@ -77,7 +91,10 @@ jobs:
           set -euo pipefail
           cd release
           sha256sum --check SHA256SUMS.txt
-          # Fail rather than replace an existing tag or download.
+          # Replace only this withdrawn preview, after the new package passes every check.
+          previous="$(gh release view v0.4.1 --repo "$GITHUB_REPOSITORY" --json targetCommitish,isDraft,isPrerelease --jq 'if .isDraft and .isPrerelease then .targetCommitish else "unexpected-release" end')"
+          test "$previous" = '1779cc136b0f7e0e925f2ddef07a19740ef31203'
+          gh release delete v0.4.1 --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag
           gh release create v0.4.1 --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
             --prerelease --latest=false --title 'Adê 0.4.1 — macOS · SwiftUI/Xcode' \
             --notes-file RELEASE.md \
