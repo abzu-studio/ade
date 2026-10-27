@@ -4,6 +4,12 @@ enum CatalogKind: String, Identifiable {
   case person, group, membership, period, component, category
   var id: String { rawValue }
 }
+private struct DeleteRequest: Identifiable {
+  let id = UUID()
+  let collection: Collection
+  let recordID: String
+  let name: String
+}
 struct CatalogDraft: Identifiable {
   var id = newID()
   var kind: CatalogKind
@@ -17,7 +23,11 @@ struct CatalogDraft: Identifiable {
   var start = Day.today
   var end = Day.today
   var openEnded = true
-  init(kind: CatalogKind) { self.kind = kind }
+  var creating = false
+  init(kind: CatalogKind) {
+    self.kind = kind
+    creating = true
+  }
   init(_ p: Person) {
     kind = .person
     id = p.id
@@ -77,6 +87,7 @@ struct CatalogView: View {
   @State private var query = ""
   @State private var draft: CatalogDraft?
   @State private var attendancePerson: Person?
+  @State private var pendingDelete: DeleteRequest?
   var body: some View {
     VStack(spacing: 0) {
       PageHeading(title: section.title(m), subtitle: m.space?.name ?? "") {
@@ -147,6 +158,29 @@ struct CatalogView: View {
       }
     }.sheet(item: $draft) { CatalogEditor(value: $0) }
       .sheet(item: $attendancePerson) { PersonParticipationView(personID: $0.id) }
+      .confirmationDialog(
+        pendingDelete.map { m.t("¿Eliminar \($0.name)?", "Delete \($0.name)?") } ?? "",
+        isPresented: Binding(
+          get: { pendingDelete != nil }, set: { if !$0 { pendingDelete = nil } }),
+        titleVisibility: .visible
+      ) {
+        Button(m.t("Eliminar", "Delete"), role: .destructive) {
+          if let request = pendingDelete {
+            Task {
+              _ = await m.edit(
+                .delete(request.collection, request.recordID),
+                label: m.t("Eliminar \(request.name)", "Delete \(request.name)"))
+            }
+          }
+          pendingDelete = nil
+        }
+        Button(m.t("Cancelar", "Cancel"), role: .cancel) { pendingDelete = nil }
+      } message: {
+        Text(
+          m.t(
+            "Se puede deshacer durante esta sesión. Un registro que sigue en uso no se elimina.",
+            "This can be undone during this session. A record that is still in use is not deleted."))
+      }
   }
   private func isEmpty(_ s: Space) -> Bool {
     section == .groups
@@ -171,7 +205,8 @@ struct CatalogView: View {
         Button(m.t("Editar", "Edit"), action: edit).buttonStyle(ActionLink()).disabled(!m.canEdit)
         PaperMenu {
           Button(m.t("Eliminar registro", "Delete record"), role: .destructive) {
-            Task { _ = await m.edit(.delete(collection, id), label: "Eliminar \(name)") }
+            let title = name.isEmpty ? m.t("este registro", "this record") : name
+            pendingDelete = DeleteRequest(collection: collection, recordID: id, name: title)
           }
         } label: {
           Image(systemName: "ellipsis")
@@ -212,7 +247,7 @@ struct CatalogView: View {
                 .disabled(!m.canEdit)
               PaperMenu {
                 Button(m.t("Eliminar", "Delete"), role: .destructive) {
-                  Task { _ = await m.edit(.delete(.people, p.id), label: "Eliminar persona") }
+                  pendingDelete = DeleteRequest(collection: .people, recordID: p.id, name: p.name)
                 }
               } label: {
                 Image(systemName: "ellipsis")
@@ -221,13 +256,21 @@ struct CatalogView: View {
             PaperRule()
           }
         }.padding(.horizontal, 28).frame(maxWidth: .infinity)
-      }.frame(maxWidth: .infinity, maxHeight: .infinity)
-      if s.people.isEmpty {
-        Text(
-          m.t(
-            "Añade personas antes de crear participantes o membresías.",
-            "Add people before choosing participants or memberships.")
-        ).foregroundStyle(.secondary).padding()
+      }.frame(maxWidth: .infinity, maxHeight: .infinity).overlay {
+        if s.people.isEmpty {
+          EmptyState(
+            title: m.t("Sin personas", "No people"),
+            detail: m.t(
+              "Añade personas antes de crear participantes o membresías.",
+              "Add people before choosing participants or memberships."))
+        } else if !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+          && !s.people.contains(where: {
+            $0.name.localizedCaseInsensitiveContains(query)
+              || $0.email.localizedCaseInsensitiveContains(query)
+          })
+        {
+          Text(m.t("Sin coincidencias.", "No matches.")).foregroundStyle(.secondary)
+        }
       }
     }
   }
@@ -238,8 +281,9 @@ struct CatalogEditor: View {
   init(value: CatalogDraft) { _draft = State(initialValue: value) }
   var body: some View {
     SheetFrame(
-      title: m.t("Editar registro", "Edit record"),
-      save: { await m.edit(draft.command, label: "Guardar \(draft.kind.rawValue)") }
+      title: draft.creating
+        ? m.t("Nuevo registro", "New record") : m.t("Editar registro", "Edit record"),
+      save: { await m.edit(draft.command, label: saveLabel(draft.kind)) }
     ) {
       PaperForm {
         if draft.kind != .membership {
@@ -284,6 +328,16 @@ struct CatalogEditor: View {
             options: [PaperOption("", "—")] + (s.components).map { PaperOption($0.id, $0.name) })
         }
       }
+    }
+  }
+  private func saveLabel(_ kind: CatalogKind) -> String {
+    switch kind {
+    case .person: m.t("Guardar persona", "Save person")
+    case .group: m.t("Guardar grupo", "Save group")
+    case .membership: m.t("Guardar membresía", "Save membership")
+    case .period: m.t("Guardar período", "Save period")
+    case .component: m.t("Guardar componente", "Save component")
+    case .category: m.t("Guardar categoría", "Save category")
     }
   }
 }

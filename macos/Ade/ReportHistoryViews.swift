@@ -124,7 +124,7 @@ struct ResultsView: View {
         computedRequest = requested
       } catch {
         guard !Task.isCancelled, request == requested else { return }
-        m.error = error.localizedDescription
+        m.error = m.explain(error)
       }
       calculating = false
     }.sheet(item: $attendancePerson) { PersonParticipationView(personID: $0.id) }
@@ -168,7 +168,7 @@ struct ResultsView: View {
       }.joined(separator: "\n")
     do {
       try Panels.save(Data(csv.utf8), name: "Ade-resultados.csv", type: .commaSeparatedText)
-    } catch { m.error = error.localizedDescription }
+    } catch { m.error = m.explain(error) }
   }
 }
 struct HistoryView: View {
@@ -238,8 +238,7 @@ struct HistoryView: View {
             title: m.t("Cambios recuperables", "Recoverable changes"),
             detail: m.t(
               "Selecciona una revisión para examinar sus datos completos. Los puntos marcan las versiones actuales.",
-              "Select a revision to inspect its full data. Dots mark current versions."),
-            symbol: "clock.arrow.circlepath")
+              "Select a revision to inspect its full data. Dots mark current versions."))
         }
       }
     }.onChange(of: m.selectedSpace) { selected = nil }
@@ -275,7 +274,7 @@ struct HistoryView: View {
       Branch(id: b.id, revisions: b.revisions.filter { ancestors.contains($0.id) }, heads: [r.id])
     ])
     do { try Panels.save(WorkspaceCodec.encode(db), name: "Ade-revision.json", type: .json) } catch
-    { m.error = error.localizedDescription }
+    { m.error = m.explain(error) }
   }
 }
 struct SettingsView: View {
@@ -327,7 +326,11 @@ struct SettingsView: View {
               TextField(m.t("Zona horaria IANA", "IANA time zone"), text: $zone)
             }
             Button(m.t("Guardar espacio", "Save space")) {
-              Task { _ = await m.edit(.settings(name, zone), label: "Configuración del espacio") }
+              Task {
+                _ = await m.edit(
+                  .settings(name, zone),
+                  label: m.t("Configuración del espacio", "Space settings"))
+              }
             }.disabled(!m.canEdit)
           }
           PaperSection(m.t("Archivo local", "Local workspace")) {

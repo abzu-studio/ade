@@ -53,6 +53,13 @@ struct SpacesHomeView: View {
           MicroLabel(text: "[ \(m.database.spaces.count) " + m.t("ESPACIOS", "SPACES") + " ]")
           Text(m.t("TUS ESPACIOS", "YOUR SPACES")).font(.custom(Enki.display, size: 34))
           PaperRule(strong: true)
+          if m.database.spaces.isEmpty {
+            Text(
+              m.t(
+                "Todavía no hay espacios. El nombre de la izquierda crea el primero.",
+                "No spaces yet. The name on the left creates the first one.")
+            ).foregroundStyle(.secondary).padding(.vertical, 24)
+          }
           ScrollView {
             LazyVStack(spacing: 0) {
               ForEach(m.database.spaces) { branch in

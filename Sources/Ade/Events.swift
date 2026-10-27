@@ -31,8 +31,8 @@ struct EventsScreen: View {
                                         Stamp(title: store.text("status.\(event.status.rawValue)"), kind: stampKind(event.status))
                                         if event.status == .scheduled || event.status == .completed || event.status == .draft {
                                             Verb(title: store.text("events.cancel")) {
-                                                guard let spaceId = store.spaceId else { return }
-                                                store.perform(.setEventStatus(spaceId: spaceId, eventId: event.id, status: .cancelled))
+                                                store.eventId = event.id
+                                                confirmCancel = true
                                             }
                                         }
                                     }
@@ -91,6 +91,7 @@ struct EventDetail: View {
     @EnvironmentObject private var store: AdeStore
     var event: AdeEvent
     @Binding var confirmCancel: Bool
+    @State private var confirmDelete = false
     @State private var note = ""
 
     var body: some View {
@@ -107,6 +108,16 @@ struct EventDetail: View {
         .onAppear { syncRoster() }
         .onChange(of: event.id) { _, _ in syncRoster() }
         .onChange(of: event.participantIds) { _, _ in syncRoster() }
+        .confirmationDialog(store.text("events.delete"), isPresented: $confirmDelete, titleVisibility: .visible) {
+            Button(store.text("action.delete"), role: .destructive) {
+                guard let spaceId = store.spaceId else { return }
+                store.perform(.deleteEvent(spaceId: spaceId, eventId: event.id))
+                if store.lastError == nil { store.eventId = nil }
+            }
+            Button(store.text("action.cancel"), role: .cancel) {}
+        } message: {
+            Text(store.text("events.deleteHelp"))
+        }
     }
 
     private var header: some View {
@@ -134,11 +145,7 @@ struct EventDetail: View {
                     store.perform(.duplicateEvent(spaceId: spaceId, eventId: event.id, titleSuffix: store.text("common.copySuffix")))
                 }
                 if event.status == .draft {
-                    Verb(title: store.text("action.delete")) {
-                        guard let spaceId = store.spaceId else { return }
-                        store.perform(.deleteEvent(spaceId: spaceId, eventId: event.id))
-                        if store.lastError == nil { store.eventId = nil }
-                    }
+                    Verb(title: store.text("action.delete")) { confirmDelete = true }
                 }
             }
             if let breakdown = running {

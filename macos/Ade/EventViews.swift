@@ -39,13 +39,25 @@ struct EventsView: View {
             LazyVStack(spacing: 0) { ForEach(events) { eventRow($0) } }
 
             if events.isEmpty {
+              let none = m.space?.events.isEmpty != false
               VStack(alignment: .leading, spacing: 12) {
-                Text(m.t("SIN EVENTOS", "NO EVENTS")).font(.custom(Enki.display, size: 24))
+                Text(none ? m.t("SIN EVENTOS", "NO EVENTS") : m.t("SIN COINCIDENCIAS", "NO MATCHES"))
+                  .font(.custom(Enki.display, size: 24))
                 Text(
-                  m.t(
-                    "Crea un evento con su componente, fecha y participantes.",
-                    "Create an event with its component, date and participants.")
+                  none
+                    ? m.t(
+                      "Crea un evento con su componente, fecha y participantes.",
+                      "Create an event with its component, date and participants.")
+                    : m.t(
+                      "Ningún evento coincide con este filtro.",
+                      "No event matches this filter.")
                 ).font(.callout).foregroundStyle(.secondary)
+                if !none {
+                  Button(m.t("Limpiar filtro", "Clear filter")) {
+                    query = ""
+                    status = nil
+                  }.buttonStyle(ActionLink())
+                }
               }.frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 40)
             }
           }
@@ -161,7 +173,10 @@ struct EventDetail: View {
   var edit: () -> Void
   @State private var duplicate = false
   @State private var showingActions = false
+  @State private var confirmDelete = false
   @State private var duplicateDay = Day.today
+  @State private var eventHistory: [Revision] = []
+  @State private var eventHistoryKey = ""
   var body: some View {
     HStack(spacing: 0) {
       VStack(alignment: .leading, spacing: 0) {
@@ -210,11 +225,31 @@ struct EventDetail: View {
       }.padding(.horizontal, 32).frame(
         maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
       if m.eventTab == 0 { AttendanceRail(event: event).frame(width: 228) }
-    }.sheet(isPresented: $duplicate) {
+    }.confirmationDialog(
+      m.t("¿Eliminar este borrador?", "Delete this draft?"),
+      isPresented: $confirmDelete,
+      titleVisibility: .visible
+    ) {
+      Button(m.t("Eliminar", "Delete"), role: .destructive) {
+        Task {
+          _ = await m.edit(
+            .delete(.events, event.id), label: m.t("Eliminar borrador", "Delete draft"))
+        }
+      }
+      Button(m.t("Cancelar", "Cancel"), role: .cancel) {}
+    } message: {
+      Text(
+        m.t(
+          "Solo se elimina un borrador. Se puede deshacer durante esta sesión.",
+          "Only a draft is deleted. This can be undone during this session."))
+    }
+    .sheet(isPresented: $duplicate) {
       SheetFrame(
         title: m.t("Duplicar evento", "Duplicate event"),
         save: {
-          await m.edit(.duplicate(event.id, newID(), duplicateDay), label: "Duplicar evento")
+          await m.edit(
+            .duplicate(event.id, newID(), duplicateDay),
+            label: m.t("Duplicar evento", "Duplicate event"))
         }
       ) {
         PaperForm {
@@ -280,14 +315,16 @@ struct EventDetail: View {
           Button(m.t("Cambiar a: ", "Change to: ") + m.status(state.rawValue)) {
             showingActions = false
             Task {
-              _ = await m.edit(.eventStatus(event.id, state), label: "Estado: \(state.rawValue)")
+              _ = await m.edit(
+                .eventStatus(event.id, state),
+                label: m.t("Estado: ", "Status: ") + m.status(state.rawValue))
             }
           }.disabled(!m.canEdit)
         }
         if event.status == .draft {
           Button(m.t("Eliminar borrador", "Delete draft"), role: .destructive) {
             showingActions = false
-            Task { _ = await m.edit(.delete(.events, event.id), label: "Eliminar borrador") }
+            confirmDelete = true
           }.disabled(!m.canEdit)
         }
       }.buttonStyle(.plain).padding(22).frame(width: 280, alignment: .leading)
@@ -310,7 +347,7 @@ struct EventDetail: View {
           .enabled)
         PaperRule()
         MicroLabel(text: m.t("Historial del evento", "Event history"))
-        ForEach(eventRevisions) { r in
+        ForEach(eventHistory) { r in
           VStack(alignment: .leading, spacing: 5) {
             Text(r.label)
             MicroLabel(text: r.timestamp + " · " + r.author)
@@ -318,6 +355,16 @@ struct EventDetail: View {
         }
       }.frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 18)
     }
+    .onAppear { refreshEventHistory() }
+    .onChange(of: m.branch?.visible?.id) { refreshEventHistory() }
+    .onChange(of: m.branch?.revisions.count) { refreshEventHistory() }
+  }
+  private func refreshEventHistory() {
+    let key = (m.branch?.visible?.id ?? "") + "|" + event.id + "|"
+      + String(m.branch?.revisions.count ?? 0)
+    guard key != eventHistoryKey else { return }
+    eventHistoryKey = key
+    eventHistory = eventRevisions
   }
   private var eventRevisions: [Revision] {
     guard let b = m.branch else { return [] }
@@ -346,7 +393,19 @@ struct EventEditor: View {
     SheetFrame(
       title: m.t("Evento y participantes", "Event and participants"),
       save: {
-        let ok = await m.edit(.event(event), label: "Guardar evento")
+        guard let clock = canonicalClock(event.time) else {
+          m.error = m.t(
+            "La hora usa HH:mm, por ejemplo 09:00.", "Time uses HH:mm, for example 09:00.")
+          return false
+        }
+        if event.time != clock { event.time = clock }
+        if event.componentId.isEmpty {
+          m.error = m.t(
+            "Elige un componente antes de guardar. Crea uno en Componentes si todavía no hay ninguno.",
+            "Choose a component before saving. Create one in Components if there are none yet.")
+          return false
+        }
+        let ok = await m.edit(.event(event), label: m.t("Guardar evento", "Save event"))
         if ok { onSaved(event.id) }
         return ok
       }
@@ -364,6 +423,13 @@ struct EventEditor: View {
             m.t("Componente", "Component"), selection: $event.componentId,
             options: [PaperOption("", "—")] + (s.components).map { PaperOption($0.id, $0.name) }
           ).onChange(of: event.componentId) { event.categoryId = nil }
+          if s.components.isEmpty {
+            Text(
+              m.t(
+                "Todavía no hay componentes. Crea uno en Componentes y vuelve a este evento.",
+                "There are no components yet. Create one in Components, then return to this event.")
+            ).font(.caption).foregroundStyle(.secondary)
+          }
           PaperPicker(
             m.t("Categoría", "Category"),
             selection: Binding(
@@ -443,11 +509,11 @@ struct RecordNoteEditor: View {
       save: {
         if var a = record.attendance {
           a.notes = note
-          return await m.edit(.attendance(a), label: "Notas de asistencia")
+          return await m.edit(.attendance(a), label: m.t("Notas de asistencia", "Attendance notes"))
         }
         if var v = record.volunteer {
           v.notes = note
-          return await m.edit(.volunteer(v), label: "Notas de voluntariado")
+          return await m.edit(.volunteer(v), label: m.t("Notas de voluntariado", "Volunteer notes"))
         }
         return false
       }
@@ -590,6 +656,16 @@ struct AttendanceView: View {
           return .handled
         }
         .onChange(of: selectedPerson) { proxy.scrollTo(selectedPerson) }
+        .onAppear {
+          if selectedPerson.isEmpty || !visiblePeople.contains(where: { $0.id == selectedPerson }) {
+            selectedPerson = visiblePeople.first?.id ?? ""
+          }
+          rosterFocused = true
+        }
+      }
+      if !query.isEmpty && visiblePeople.isEmpty && !event.participantIds.isEmpty {
+        Text(m.t("Sin coincidencias en la lista.", "No matches on the roster."))
+          .foregroundStyle(.secondary).padding(.vertical, 8)
       }
       if event.participantIds.isEmpty {
         EmptyState(
@@ -616,7 +692,8 @@ struct AttendanceView: View {
     changed.status = value
     Task {
       let saved = await m.edit(
-        .attendance(changed), label: "Asistencia: \(p.name) · \(m.status(value.rawValue))")
+        .attendance(changed),
+        label: m.t("Asistencia: ", "Attendance: ") + "\(p.name) · \(m.status(value.rawValue))")
       if saved && advance && selectedPerson == p.id { move(1) }
     }
   }
@@ -753,7 +830,7 @@ struct VolunteersView: View {
               Task {
                 if await m.edit(
                   .volunteer(Volunteer(eventId: event.id, personId: candidate)),
-                  label: "Registrar interés")
+                  label: m.t("Registrar interés", "Register interest"))
                 {
                   candidate = ""
                 }
@@ -777,7 +854,9 @@ struct VolunteersView: View {
                 Button(m.t("Seleccionar", "Select")) {
                   if var v = volunteers.first(where: { $0.personId == suggestion.id }) {
                     v.status = .selected
-                    Task { _ = await m.edit(.volunteer(v), label: "Seleccionar voluntario") }
+                    Task {
+                      _ = await m.edit(.volunteer(v), label: m.t("Seleccionar voluntario", "Select volunteer"))
+                    }
                   }
                 }.disabled(
                   !m.canEdit || !suggestion.active || event.status == .cancelled
@@ -803,7 +882,8 @@ struct VolunteersView: View {
                       changed.status = state
                       Task {
                         _ = await m.edit(
-                          .volunteer(changed), label: "Voluntariado: \(state.rawValue)")
+                          .volunteer(changed),
+                          label: m.t("Voluntariado: ", "Volunteering: ") + m.status(state.rawValue))
                       }
                     }
                   }

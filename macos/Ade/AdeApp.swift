@@ -55,6 +55,12 @@ import SwiftUI
           Button(model.t("Exportar archivo…", "Export workspace…")) { model.exportWorkspace() }
             .keyboardShortcut("e", modifiers: [.command, .shift])
         }
+        CommandGroup(replacing: .undoRedo) {
+          Button(model.t("Deshacer", "Undo")) { Task { await model.undoFromMenu() } }
+            .keyboardShortcut("z", modifiers: .command)
+          Button(model.t("Rehacer", "Redo")) { Task { await model.redoFromMenu() } }
+            .keyboardShortcut("z", modifiers: [.command, .shift])
+        }
         CommandMenu(model.t("Navegar", "Navigate")) {
           Button(model.t("Apertura rápida…", "Quick Open…")) { model.quickOpenRequested = true }
             .keyboardShortcut("k").disabled(model.loading)
@@ -63,6 +69,10 @@ import SwiftUI
           ForEach(Array(AppSection.navigation.prefix(9).enumerated()), id: \.element.id) { index, section in
             Button(section.title(model)) { model.navigate(section) }
               .keyboardShortcut(KeyEquivalent(Character(String(index + 1))), modifiers: .command)
+              .disabled(model.space == nil)
+          }
+          ForEach(AppSection.navigation.dropFirst(9)) { section in
+            Button(section.title(model)) { model.navigate(section) }
               .disabled(model.space == nil)
           }
         }
@@ -247,8 +257,8 @@ struct WorkspaceView: View {
         ActionLink()
       ).disabled(!model.canUndo).accessibilityIdentifier("history-undo").help(
         model.t(
-          "Deshacer el último cambio guardado de esta sesión",
-          "Undo the last saved change in this session"))
+          "Deshacer el último cambio guardado de esta sesión · ⌘Z",
+          "Undo the last saved change in this session · ⌘Z"))
       Button(model.t("↷ Rehacer", "↷ Redo")) { Task { await model.redo() } }.buttonStyle(
         ActionLink()
       ).disabled(!model.canRedo).accessibilityIdentifier("history-redo")

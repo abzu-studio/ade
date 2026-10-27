@@ -464,12 +464,28 @@ enum Rules {
         list.removeAll { $0.id == id }
       }
       switch collection {
-      case .people: try remove(&s.people)
-      case .groups: try remove(&s.groups)
+      case .people:
+        try require(
+          !s.memberships.contains { $0.personId == id }
+            && !s.events.contains { $0.participantIds.contains(id) }
+            && !s.attendance.contains { $0.personId == id }
+            && !s.volunteers.contains { $0.personId == id },
+          "La persona sigue en uso.")
+        try remove(&s.people)
+      case .groups:
+        try require(!s.memberships.contains { $0.groupId == id }, "El grupo sigue en uso.")
+        try remove(&s.groups)
       case .memberships: try remove(&s.memberships)
       case .periods: try remove(&s.periods)
-      case .components: try remove(&s.components)
-      case .categories: try remove(&s.categories)
+      case .components:
+        try require(
+          !s.categories.contains { $0.componentId == id }
+            && !s.events.contains { $0.componentId == id },
+          "El componente sigue en uso.")
+        try remove(&s.components)
+      case .categories:
+        try require(!s.events.contains { $0.categoryId == id }, "La categoría sigue en uso.")
+        try remove(&s.categories)
       case .templates: try remove(&s.templates)
       case .events:
         try require(
@@ -483,14 +499,16 @@ enum Rules {
     return s
   }
   static func create(
-    _ db: Database, name: String, author: String, zone: String = "America/Puerto_Rico"
+    _ db: Database, name: String, author: String, zone: String = "America/Puerto_Rico",
+    label: String = "Crear espacio"
   ) throws -> Database {
     var result = db
     var s = Space(name: name)
     s.timeZone = zone
     try validate(s)
     try title(author)
-    let r = Revision(parents: [], author: author, label: "Crear espacio", data: s)
+    try title(label)
+    let r = Revision(parents: [], author: author, label: label, data: s)
     result.spaces.append(Branch(id: s.id, revisions: [r], heads: [r.id]))
     return result
   }
@@ -519,17 +537,17 @@ enum Rules {
     return try append(
       db, space: space, data: apply(edit, to: b.current()), label: label, author: author)
   }
-  static func restore(_ db: Database, space: String, revision: String, author: String) throws
-    -> Database
-  {
+  static func restore(
+    _ db: Database, space: String, revision: String, author: String, label: String? = nil
+  ) throws -> Database {
     guard let b = db.spaces.first(where: { $0.id == space }),
       let r = b.revisions.first(where: { $0.id == revision })
     else { throw RuleError("Revisión inexistente") }
-    return try append(
-      db, space: space, data: r.data,
-      label: b.conflicted
-        ? "Resolver conflicto conservando historial" : "Restaurar: " + String(r.label.prefix(225)),
-      author: author)
+    let text =
+      label
+      ?? (b.conflicted
+        ? "Resolver conflicto conservando historial" : "Restaurar: " + String(r.label.prefix(225)))
+    return try append(db, space: space, data: r.data, label: text, author: author)
   }
   static func merge(_ local: Database, _ remote: Database) throws -> Database {
     try validate(local)

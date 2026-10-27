@@ -101,7 +101,6 @@ struct PageHeading<Actions: View>: View {
 struct EmptyState: View {
   var title: String
   var detail: String
-  var symbol = "tray"
   var body: some View {
     VStack(alignment: .leading, spacing: 14) {
       PaperRule(strong: true).frame(width: 48)

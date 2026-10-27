@@ -94,7 +94,7 @@ import UniformTypeIdentifiers
       reconcileSelection()
     } catch {
       unreadable = true
-      self.error = error.localizedDescription
+      self.error = explain(error)
     }
   }
   private func reconcileSelection() {
@@ -127,7 +127,7 @@ import UniformTypeIdentifiers
       reconcileSelection()
       return true
     } catch {
-      self.error = error.localizedDescription
+      self.error = explain(error)
       return false
     }
   }
@@ -172,7 +172,7 @@ import UniformTypeIdentifiers
       pendingHistory = history
       return await persist(proposal)
     } catch {
-      self.error = error.localizedDescription
+      self.error = explain(error)
       return false
     }
   }
@@ -186,25 +186,54 @@ import UniformTypeIdentifiers
 
   func createSpace(name: String, zone: String) async -> Bool {
     let priorIDs = Set(database.spaces.map(\.id))
-    guard await transact(.create(name, zone)) else { return false }
+    guard await transact(.create(name, zone, t("Crear espacio", "Create space"))) else { return false }
     if let added = database.spaces.last(where: { !priorIDs.contains($0.id) }) { openSpace(added.id) }
     return true
   }
   func undo() async { await travel(backward: true) }
   func redo() async { await travel(backward: false) }
+  /// Edit menu: typing undo wins while a field can undo. Otherwise the session change is undone.
+  func undoFromMenu() async {
+    if forwardTextEdit(redo: false) { return }
+    await undo()
+  }
+  func redoFromMenu() async {
+    if forwardTextEdit(redo: true) { return }
+    await redo()
+  }
+  func explain(_ error: Error) -> String {
+    RuleCopy.explain((error as? LocalizedError)?.errorDescription ?? error.localizedDescription, english: locale != "es")
+  }
+  private func forwardTextEdit(redo: Bool) -> Bool {
+    guard let editor = NSApp.keyWindow?.firstResponder as? NSTextView, let manager = editor.undoManager
+    else { return false }
+    if redo {
+      guard manager.canRedo else { return false }
+      manager.redo()
+    } else {
+      guard manager.canUndo else { return false }
+      manager.undo()
+    }
+    return true
+  }
   private func travel(backward: Bool) async {
     guard backward ? canUndo : canRedo else { return }
     let spaceID = selectedSpace
     guard let step = (backward ? undoSteps[spaceID] : redoSteps[spaceID])?.last,
       let target = branch?.revisions.first(where: { $0.id == (backward ? step.before : step.after) })
     else { return }
-    let label = (backward ? "Deshacer: " : "Rehacer: ") + String(step.label.prefix(225))
+    let label = (backward ? t("Deshacer: ", "Undo: ") : t("Rehacer: ", "Redo: "))
+      + String(step.label.prefix(225))
     _ = await transact(.append(spaceID, target.data, label),
                        history: .travel(space: spaceID, step: step, backward: backward))
   }
   func restore(_ revision: Revision) async {
     let spaceID = selectedSpace
-    _ = await transact(.restore(spaceID, revision.id), history: .restore(space: spaceID))
+    let label =
+      branch?.conflicted == true
+      ? t("Resolver conflicto conservando historial", "Resolve conflict and keep history")
+      : t("Restaurar: ", "Restore: ") + String(revision.label.prefix(225))
+    _ = await transact(.restore(spaceID, revision.id, label), history: .restore(space: spaceID))
   }
 
   func exportWorkspace() {
@@ -213,7 +242,7 @@ import UniformTypeIdentifiers
       do {
         let data = try await store.export(snapshot)
         try Panels.save(data, name: "Ade-backup.json", type: .json)
-      } catch { self.error = error.localizedDescription }
+      } catch { self.error = explain(error) }
     }
   }
   func importWorkspace() async {
@@ -225,7 +254,7 @@ import UniformTypeIdentifiers
         redoSteps = [:]
         showSpaces = false
       }
-    } catch { self.error = error.localizedDescription }
+    } catch { self.error = explain(error) }
   }
   func repairFromBackup() async {
     guard !busy && unreadable else { return }
@@ -243,13 +272,13 @@ import UniformTypeIdentifiers
       reconcileSelection()
       notice = t("Copia anterior restaurada. El archivo dañado se conservó.",
                  "Previous backup restored. The damaged file was preserved.")
-    } catch { self.error = error.localizedDescription }
+    } catch { self.error = explain(error) }
   }
   func recoverBackup() async {
     do {
       let data = try await store.exportBackup()
       try Panels.save(data, name: "Ade-recovered.json", type: .json)
-    } catch { self.error = error.localizedDescription }
+    } catch { self.error = explain(error) }
   }
 
   @ObservationIgnored private var readRevision = ""

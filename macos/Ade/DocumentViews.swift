@@ -31,6 +31,7 @@ struct DocumentsView: View {
   @State private var generatedRevision = ""
   @State private var generating = false
   @State private var requestID = UUID()
+  @State private var pendingDelete: DocumentTemplate?
   var body: some View {
     VStack(spacing: 0) {
       PageHeading(title: m.t("Documentos", "Documents"), subtitle: m.space?.name ?? "") {
@@ -62,7 +63,7 @@ struct DocumentsView: View {
               Button(m.t("Editar plantilla", "Edit template")) { draft = t }.disabled(!m.canEdit)
               PaperMenu {
                 Button(m.t("Eliminar plantilla", "Delete template"), role: .destructive) {
-                  Task { _ = await m.edit(.delete(.templates, t.id), label: "Eliminar plantilla") }
+                  pendingDelete = t
                 }
               } label: {
                 Image(systemName: "ellipsis")
@@ -95,7 +96,7 @@ struct DocumentsView: View {
               Button(m.t("Guardar PDF…", "Save PDF…")) {
                 if let pdf {
                   do { try Panels.save(pdf, name: "Ade-documento.pdf", type: .pdf) } catch {
-                    m.error = error.localizedDescription
+                    m.error = m.explain(error)
                   }
                 }
               }.disabled(pdf == nil)
@@ -112,15 +113,14 @@ struct DocumentsView: View {
                 title: m.t("Documento por generar", "Document to generate"),
                 detail: m.t(
                   "Selecciona un evento y genera el documento con sus datos reales.",
-                  "Select an event and generate a document using its real data."),
-                symbol: "doc.text")
+                  "Select an event and generate a document using its real data."))
             }
           } else {
             EmptyState(
               title: m.t("Plantillas de documentos", "Document templates"),
               detail: m.t(
                 "Crea o selecciona una plantilla para generar un PDF.",
-                "Create or select a template to generate a PDF."), symbol: "doc.text")
+                "Create or select a template to generate a PDF."))
           }
         }.padding(24).frame(minWidth: 540, maxWidth: .infinity, maxHeight: .infinity)
       }
@@ -138,6 +138,29 @@ struct DocumentsView: View {
         selected = m.space?.templates.first?.id
         m.documentEvent = ""
       }
+    }
+    .confirmationDialog(
+      m.t("¿Eliminar esta plantilla?", "Delete this template?"),
+      isPresented: Binding(
+        get: { pendingDelete != nil }, set: { if !$0 { pendingDelete = nil } }),
+      titleVisibility: .visible
+    ) {
+      Button(m.t("Eliminar", "Delete"), role: .destructive) {
+        if let template = pendingDelete {
+          Task {
+            _ = await m.edit(
+              .delete(.templates, template.id),
+              label: m.t("Eliminar \(template.name)", "Delete \(template.name)"))
+          }
+        }
+        pendingDelete = nil
+      }
+      Button(m.t("Cancelar", "Cancel"), role: .cancel) { pendingDelete = nil }
+    } message: {
+      Text(
+        m.t(
+          "Se puede deshacer durante esta sesión.",
+          "This can be undone during this session."))
     }
     .onChange(of: selected) { invalidatePreview() }
     .onChange(of: m.branch?.heads) {
@@ -179,7 +202,7 @@ struct DocumentsView: View {
           m.branch?.heads == [options.revisionId] else { return }
         pdf = data
         generatedRevision = options.revisionId
-      } catch { if requestID == request { m.error = error.localizedDescription } }
+      } catch { if requestID == request { m.error = m.explain(error) } }
       if requestID == request { generating = false }
     }
   }
@@ -196,7 +219,8 @@ struct TemplateEditor: View {
     SheetFrame(
       title: m.t("Plantilla de documento", "Document template"),
       save: {
-        let ok = await m.edit(.template(template), label: "Guardar plantilla")
+        let ok = await m.edit(
+          .template(template), label: m.t("Guardar plantilla", "Save template"))
         if ok { onSaved(template.id) }
         return ok
       }
@@ -225,7 +249,7 @@ struct TemplateEditor: View {
                 }
                 template.backgroundPDF = data.base64EncodedString()
               }
-            } catch { m.error = error.localizedDescription }
+            } catch { m.error = m.explain(error) }
           }
           if template.backgroundPDF != nil {
             Text(m.t("Fondo incluido", "Background included")).font(.caption)
@@ -287,7 +311,7 @@ struct TemplateEditor: View {
                       let mime = data.starts(with: [0x89, 0x50, 0x4e, 0x47]) ? "png" : "jpeg"
                       block.data = "data:image/\(mime);base64," + data.base64EncodedString()
                     }
-                  } catch { m.error = error.localizedDescription }
+                  } catch { m.error = m.explain(error) }
                 }
                 Text(
                   (block.data ?? "").isEmpty
