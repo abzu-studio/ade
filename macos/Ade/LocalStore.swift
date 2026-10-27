@@ -5,9 +5,9 @@ import Foundation
 /// A transaction's input is immutable and captured before leaving the main actor.
 enum WorkspaceMutation {
   case edit(String, Edit, String)
-  case create(String, String)
+  case create(String, String, String)
   case append(String, Space, String)
-  case restore(String, String)
+  case restore(String, String, String)
   case importData(Data)
 }
 struct WorkspaceReceipt {
@@ -51,12 +51,12 @@ actor LocalStore {
     switch mutation {
     case .edit(let id, let edit, let label):
       return try Rules.execute(db, space: id, edit: edit, label: label, author: author)
-    case .create(let name, let zone):
-      return try Rules.create(db, name: name, author: author, zone: zone)
+    case .create(let name, let zone, let label):
+      return try Rules.create(db, name: name, author: author, zone: zone, label: label)
     case .append(let id, let space, let label):
       return try Rules.append(db, space: id, data: space, label: label, author: author)
-    case .restore(let id, let revision):
-      return try Rules.restore(db, space: id, revision: revision, author: author)
+    case .restore(let id, let revision, let label):
+      return try Rules.restore(db, space: id, revision: revision, author: author, label: label)
     case .importData(let data):
       return try Rules.merge(db, WorkspaceCodec.decode(data))
     }

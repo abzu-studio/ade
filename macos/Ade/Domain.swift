@@ -222,6 +222,133 @@ enum Day {
   }
 }
 
+/// Accepts `9:00`, `09:00`, and `9:5`. Stored events stay `HH:mm`.
+func canonicalClock(_ raw: String) -> String? {
+  let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+  let parts = trimmed.split(separator: ":", omittingEmptySubsequences: false)
+  guard parts.count == 2,
+    (1...2).contains(parts[0].count), (1...2).contains(parts[1].count),
+    parts[0].allSatisfy(\.isNumber), parts[1].allSatisfy(\.isNumber),
+    let hour = Int(parts[0]), let minute = Int(parts[1]),
+    (0...23).contains(hour), (0...59).contains(minute)
+  else { return nil }
+  return String(format: "%02d:%02d", hour, minute)
+}
+
+/// Domain failures are written in Spanish. English screens translate the known sentences.
+enum RuleCopy {
+  static func explain(_ message: String, english: Bool) -> String {
+    guard english else { return message }
+    if let exact = englishExact[message] { return exact }
+    let date = "Fecha inválida: "
+    if message.hasPrefix(date) { return "Invalid date: " + message.dropFirst(date.count) }
+    let variable = "Variable desconocida: "
+    if message.hasPrefix(variable) { return "Unknown variable: " + message.dropFirst(variable.count) }
+    return message
+  }
+
+  private static let englishExact = [
+    "El texto supera 20 000 caracteres.": "The text is longer than 20,000 characters.",
+    "Identificador inválido": "Invalid identifier.",
+    "El nombre es obligatorio (máximo 240 caracteres).": "A name is required (240 characters at most).",
+    "Zona horaria inválida": "Invalid time zone.",
+    "Identificadores duplicados en el espacio": "Duplicate identifiers in the space.",
+    "Correo electrónico inválido": "Invalid email.",
+    "Componente de categoría inexistente": "That category's component does not exist.",
+    "El período termina antes de comenzar": "The period ends before it starts.",
+    "Fechas de membresía inválidas": "Invalid membership dates.",
+    "Miembro o grupo inexistente": "That membership's person or group does not exist.",
+    "Las membresías de una persona en el mismo grupo no pueden solaparse":
+      "A person's memberships in the same group cannot overlap.",
+    "Hora inválida": "Invalid time. Use HH:mm, for example 09:00.",
+    "Todo evento necesita un componente válido": "Every event needs a component.",
+    "La categoría no pertenece al componente": "That category does not belong to the component.",
+    "Participante duplicado": "Duplicate participant.",
+    "Participante inexistente o de otro espacio": "A participant does not exist in this space.",
+    "Capacidad inválida": "Invalid capacity.",
+    "Se excedió la capacidad del evento": "The event is over capacity.",
+    "La capacidad de voluntarios supera la del evento":
+      "Volunteer capacity is higher than the event capacity.",
+    "Se excedió la capacidad de voluntarios": "Volunteer capacity is full.",
+    "Asistencia duplicada": "Duplicate attendance.",
+    "Solo se registra asistencia para personas en la lista del evento":
+      "Attendance is only recorded for people on the event roster.",
+    "Voluntariado duplicado": "Duplicate volunteering.",
+    "Voluntario o evento inexistente": "That volunteer or event does not exist.",
+    "Los voluntarios seleccionados deben estar en la lista del evento":
+      "Selected volunteers must be on the event roster.",
+    "Márgenes inválidos": "Invalid margins.",
+    "La plantilla necesita entre 1 y 200 bloques": "A template needs between 1 and 200 blocks.",
+    "Bloque duplicado": "Duplicate block.",
+    "PDF de fondo inválido": "Invalid background PDF.",
+    "Bloque de texto inválido": "Invalid text block.",
+    "Columnas incompletas": "Incomplete columns.",
+    "Ancho de imagen inválido": "Invalid image width.",
+    "Imagen incompleta": "Incomplete image.",
+    "Imagen inválida": "Invalid image.",
+    "Campos de bloque inválidos": "Invalid block fields.",
+    "Versión de datos no compatible": "Incompatible data version.",
+    "Historial vacío": "Empty history.",
+    "Fecha de revisión inválida": "Invalid revision date.",
+    "Revisión de otro espacio": "Revision from another space.",
+    "Ciclo en el historial": "Cycle in the history.",
+    "Cabeceras de historial inválidas": "Invalid history heads.",
+    "Reabre el evento antes de editarlo": "Reopen the event before editing it.",
+    "Usa la acción de estado para programar, completar o cancelar":
+      "Use the status action to schedule, complete, or cancel.",
+    "No se pueden añadir personas inactivas": "Inactive people cannot be added.",
+    "No se puede quitar a una persona con asistencia o notas registradas":
+      "A person with recorded attendance or notes cannot be removed.",
+    "Evento inexistente": "Event not found.",
+    "Identificador ya utilizado": "That identifier is already used.",
+    "Cambio de estado no permitido": "That status change is not allowed.",
+    "El evento tiene participación; no puede volver a borrador":
+      "The event has participation and cannot return to draft.",
+    "Registra asistencia en un evento programado o completado":
+      "Record attendance on a scheduled or completed event.",
+    "La persona no está en la lista del evento": "That person is not on the event roster.",
+    "Identificador de asistencia incorrecto": "Wrong attendance identifier.",
+    "No se puede reasignar una asistencia": "An attendance record cannot be reassigned.",
+    "Evento o persona inexistente": "Event or person not found.",
+    "Evento cancelado": "The event is cancelled.",
+    "Identificador de voluntariado incorrecto": "Wrong volunteering identifier.",
+    "No se puede reasignar un voluntariado": "A volunteer record cannot be reassigned.",
+    "Transición de voluntariado no permitida": "That volunteer transition is not allowed.",
+    "No se pueden inscribir o seleccionar personas inactivas":
+      "Inactive people cannot be marked interested or selected.",
+    "Reabre el evento antes de inscribir o seleccionar":
+      "Reopen the event before marking interest or selecting.",
+    "Registro inexistente": "Record not found.",
+    "Solo se eliminan borradores; cancela los demás eventos":
+      "Only drafts can be deleted. Cancel the other events.",
+    "La persona sigue en uso.": "This person is still in use.",
+    "El grupo sigue en uso.": "This group is still in use.",
+    "El componente sigue en uso.": "This component is still in use.",
+    "La categoría sigue en uso.": "This category is still in use.",
+    "Espacio inexistente": "Space not found.",
+    "Datos de otro espacio": "Data from another space.",
+    "Revisión inexistente": "Revision not found.",
+    "El archivo altera una revisión existente; no se importó ningún cambio":
+      "The file changes an existing revision. Nothing was imported.",
+    "El archivo contiene campos desconocidos; se conserva sin modificar.":
+      "The file contains unknown fields. It was left unchanged.",
+    "El archivo supera 100 MB.": "The file is larger than 100 MB.",
+    "El archivo supera el tamaño permitido": "The file is larger than the allowed size.",
+    "Resuelve el conflicto en Historial antes de editar.":
+      "Resolve the conflict in History before editing.",
+    "Espacio sin revisión": "Space with no revision.",
+    "No hay copia anterior": "There is no previous backup.",
+    "Selecciona un evento": "Select an event.",
+    "Período inexistente": "Period not found.",
+    "Grupo inexistente": "Group not found.",
+    "Persona inexistente": "Person not found.",
+    "No se pudo leer la imagen": "The image could not be read.",
+    "PDF de fondo inválido o protegido": "The background PDF is invalid or protected.",
+    "PDF inválido o protegido": "The PDF is invalid or protected.",
+    "No se pudo crear el PDF": "The PDF could not be created.",
+  ]
+}
+
 /// JSON remains compatible with Adê v1 exports, including explicit nullable fields.
 enum WorkspaceCodec {
   static func object<T: Encodable>(_ value: T) throws -> Any {

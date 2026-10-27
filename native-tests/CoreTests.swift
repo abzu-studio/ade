@@ -168,6 +168,10 @@ import PDFKit
       s.member("ana", group: "group", on: "2026-06-30")
         && !s.member("ana", group: "group", on: "2026-07-01"), "membership boundaries")
     try rejects("invalid leap date") { try Rules.day("2025-02-29") }
+    try check(
+      canonicalClock("9:00") == "09:00" && canonicalClock("09:5") == "09:05"
+        && canonicalClock("24:00") == nil && canonicalClock("9:00:00") == nil,
+      "clock accepts a one-digit hour")
     try rejects("cross-space reference") {
       var bad = s
       bad.events[0].participantIds.append("other-space")
@@ -186,7 +190,13 @@ import PDFKit
     try rejects("draft transition with attendance") {
       _ = try Rules.apply(.eventStatus("event", .draft), to: s)
     }
-    try rejects("delete referenced person") { _ = try Rules.apply(.delete(.people, "ana"), to: s) }
+    do {
+      _ = try Rules.apply(.delete(.people, "ana"), to: s)
+      throw RuleError("FAIL accepted: delete referenced person")
+    } catch {
+      let message = (error as? RuleError)?.message ?? ""
+      try check(message == "La persona sigue en uso.", "delete referenced person names the reason")
+    }
     var v = Volunteer(id: "vol", eventId: "event", personId: "ana")
     s = try Rules.apply(.volunteer(v), to: s)
     v.status = .selected

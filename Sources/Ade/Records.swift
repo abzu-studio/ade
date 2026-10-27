@@ -107,7 +107,9 @@ struct PeopleScreen: View {
                     ClayField(label: store.text("common.search"), text: $query)
                         .padding(.horizontal, 12)
                     if filtered.isEmpty {
-                        Text(store.text("people.empty"))
+                        Text(query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                             ? store.text("people.empty")
+                             : store.text("common.noMatches"))
                             .font(AdeFont.body(14))
                             .foregroundStyle(Clay.umber)
                             .padding(16)

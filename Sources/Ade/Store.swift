@@ -353,7 +353,7 @@ final class AdeStore: ObservableObject {
         case "p": markAttendance(.present, spaceId: spaceId, eventId: eventId)
         case "a": markAttendance(.absent, spaceId: spaceId, eventId: eventId)
         case "e": markAttendance(.excused, spaceId: spaceId, eventId: eventId)
-        case "w": markAttendance(.pending, spaceId: spaceId, eventId: eventId)
+        case "x", "w": markAttendance(.pending, spaceId: spaceId, eventId: eventId)
         default:
             if key.keyCode == 126 { moveAttendance(-1); return true }
             if key.keyCode == 125 { moveAttendance(1); return true }
@@ -367,12 +367,17 @@ final class AdeStore: ObservableObject {
         let personId = attendancePeople[attendanceIndex]
         let note = database.attendance.first { $0.eventId == eventId && $0.personId == personId }?.note ?? ""
         perform(.setAttendance(spaceId: spaceId, eventId: eventId, personId: personId, state: state, note: note))
+        if lastError == nil { moveAttendance(1, wrap: false) }
     }
 
-    private func moveAttendance(_ delta: Int) {
+    private func moveAttendance(_ delta: Int, wrap: Bool = true) {
         guard !attendancePeople.isEmpty else { return }
         let count = attendancePeople.count
-        attendanceIndex = (attendanceIndex + delta + count) % count
+        if wrap {
+            attendanceIndex = (attendanceIndex + delta + count) % count
+        } else {
+            attendanceIndex = min(count - 1, max(0, attendanceIndex + delta))
+        }
     }
 
     private var textViewCanUndo: Bool {

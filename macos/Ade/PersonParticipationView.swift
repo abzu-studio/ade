@@ -69,7 +69,7 @@ struct PersonParticipationView: View {
           computedRequest = requested
         } catch {
           guard !Task.isCancelled, request == requested else { return }
-          self.error = error.localizedDescription
+          self.error = m.explain(error)
         }
         calculating = false
       }
@@ -210,7 +210,7 @@ struct PersonParticipationView: View {
     do {
       try Panels.save(
         Data(csv.utf8), name: "Ade-asistencia-individual.csv", type: .commaSeparatedText)
-    } catch { self.error = error.localizedDescription }
+    } catch { self.error = m.explain(error) }
   }
 }
 

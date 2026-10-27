@@ -13,7 +13,7 @@ extension AppModel {
       next = try Rules.append(
         next, space: id, data: space, label: "Cargar demo · datos ficticios", author: author)
       if await commit(next) { openSpace(id) }
-    } catch { self.error = error.localizedDescription }
+    } catch { self.error = explain(error) }
   }
 }
 enum DemoData {

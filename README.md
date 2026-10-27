@@ -44,7 +44,7 @@ bash scripts/package-macos-app.sh
 open "dist/Adê.app"
 ```
 
-`swift test` runs `Tests/AdeCoreTests`. The package script writes `dist/Ade-1.0.1-macOS.zip`. Its rules are `docs/RULES.md`. Its screens calculate the same attendance percentage as the Xcode app and do not invent a second one. Dates in history use Puerto Rico time. Export and import live in Data and the File menu.
+`swift test` runs `Tests/AdeCoreTests`. The package script writes `dist/Ade-1.0.1-macOS.zip`. Its rules are `docs/RULES.md`. Its screens calculate the same attendance percentage as the Xcode app and do not invent a second one. Attendance keys match the Xcode app: P, A, E, and X. W still marks pending. Dates in history use Puerto Rico time. Export and import live in Data and the File menu.
 
 ## Repository metadata
 

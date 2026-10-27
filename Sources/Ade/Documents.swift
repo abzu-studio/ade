@@ -85,6 +85,7 @@ struct TemplateEditor: View {
     @State private var periodId = ""
     @State private var eventId = ""
     @State private var groupId = ""
+    @State private var confirmDelete = false
 
     var body: some View {
         ScrollView {
@@ -136,10 +137,7 @@ struct TemplateEditor: View {
                 HStack(spacing: 14) {
                     Verb(title: store.text("action.save")) { save() }
                     Verb(title: store.text("documents.generate")) { generate() }
-                    Verb(title: store.text("action.delete")) {
-                        store.perform(.deleteTemplate(spaceId: template.spaceId, templateId: template.id))
-                        if store.lastError == nil { store.templateId = nil }
-                    }
+                    Verb(title: store.text("action.delete")) { confirmDelete = true }
                 }
                 if let message {
                     Text(message).font(AdeFont.body(13)).foregroundStyle(Clay.ink)
@@ -149,6 +147,15 @@ struct TemplateEditor: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .onAppear(perform: load)
+        .confirmationDialog(store.text("action.delete"), isPresented: $confirmDelete, titleVisibility: .visible) {
+            Button(store.text("action.delete"), role: .destructive) {
+                store.perform(.deleteTemplate(spaceId: template.spaceId, templateId: template.id))
+                if store.lastError == nil { store.templateId = nil }
+            }
+            Button(store.text("action.cancel"), role: .cancel) {}
+        } message: {
+            Text(store.text("documents.deleteHelp"))
+        }
         .onChange(of: template.id) { _, _ in load() }
         .onChange(of: template.updatedAt) { _, _ in load() }
     }
